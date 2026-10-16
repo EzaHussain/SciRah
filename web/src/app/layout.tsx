@@ -96,6 +96,14 @@ function Footer() {
             ))}
           </ul>
           <p className="mt-3 text-xs">Thank you to arXiv for use of its open access interoperability.</p>
+          <p className="mt-3 flex gap-4 text-xs">
+            <Link href="/privacy" className="hover:text-fg">
+              Privacy policy
+            </Link>
+            <Link href="/terms" className="hover:text-fg">
+              Terms of service
+            </Link>
+          </p>
         </div>
       </div>
     </footer>

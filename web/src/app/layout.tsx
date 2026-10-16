@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { Backdrop, HeaderLogo, RoadDivider } from "@/components/brand";
 import { Header } from "@/components/Header";
 import { readerHref } from "@/lib/api";
+import { siteUrl } from "@/lib/paper-export";
 import { themeInitScript } from "@/components/ThemeToggle";
 import "./globals.css";
 
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
   title: { default: "SciRah — find your path through research", template: "%s · SciRah" },
   description:
     "SciRah helps students and researchers in Pakistan discover papers from OpenAlex, Semantic Scholar, Crossref, CORE, arXiv and PubMed — with plain-language summaries in English and Urdu.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(siteUrl()),
 };
 
 export const viewport: Viewport = {

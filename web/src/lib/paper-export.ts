@@ -42,4 +42,12 @@ export function apaCitation(p: Paper): string {
   return parts.join("").trim();
 }
 
-export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+/**
+ * The site's public address: NEXT_PUBLIC_SITE_URL when set (e.g. a custom domain), otherwise the
+ * production address Vercel provides automatically, otherwise local development.
+ */
+export const siteUrl = () =>
+  (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")
+  ).replace(/\/$/, "");

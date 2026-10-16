@@ -9,7 +9,7 @@
   },
   "author": "",
   "license": "ISC",
-  "description": "SciRah API — aggregates scholarly APIs",
+  "description": "SciRah API \u2014 aggregates scholarly APIs",
   "dependencies": {
     "@nestjs/common": "^12.1.2",
     "@nestjs/core": "^12.1.2",
@@ -27,5 +27,8 @@
     "typescript": "^6.0.3"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  }
 }

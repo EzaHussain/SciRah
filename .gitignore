@@ -23,3 +23,6 @@ coverage/
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# Local copy of deployment settings (contains secrets)
+railway-variables.txt

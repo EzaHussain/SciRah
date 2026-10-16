@@ -1,0 +1,25 @@
+# Local services for development. Both are optional:
+#   docker compose up -d postgres   → DATABASE_URL=postgres://postgres:postgres@localhost:5432/scirah
+#   docker compose up -d redis      → REDIS_URL=redis://localhost:6379
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: scirah
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:

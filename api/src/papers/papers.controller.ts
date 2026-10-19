@@ -3,6 +3,7 @@ import { CurrentUser, OptionalAuthGuard } from '../common/auth.js';
 import type { AuthUser } from '../common/auth.js';
 import { AlertsService } from '../alerts/alerts.service.js';
 import { FeedService } from '../feed/feed.service.js';
+import { FullTextService } from './fulltext.service.js';
 import { InsightsService } from './insights.service.js';
 import { PapersService } from './papers.service.js';
 import type { SearchMode, SearchParams, SortMode } from './types.js';
@@ -75,6 +76,7 @@ export class PapersController {
   constructor(
     private readonly papers: PapersService,
     private readonly insights: InsightsService,
+    private readonly fulltext: FullTextService,
     private readonly feed: FeedService,
     private readonly alerts: AlertsService,
   ) {}
@@ -106,6 +108,20 @@ export class PapersController {
     const query = (q ?? '').trim();
     if (query.length < 2) return [];
     return this.papers.institutions(query.slice(0, 100));
+  }
+
+  /** How to read the whole paper inside SciRah (article text, PDF, open-access page, or not available). */
+  @Get('fulltext')
+  fullText(@Query('id') id?: string) {
+    if (!id) throw new BadRequestException('id is required');
+    return this.fulltext.resolve(id.trim());
+  }
+
+  /** A Europe PMC open-access article converted to safe HTML. */
+  @Get('fulltext/article')
+  fullArticle(@Query('pmcid') pmcid?: string) {
+    if (!pmcid) throw new BadRequestException('pmcid is required');
+    return this.fulltext.article(pmcid.trim());
   }
 
   @Get('detail')

@@ -177,6 +177,16 @@ function AccountButton({ block = false }: { block?: boolean }) {
               Review added papers
             </Link>
           )}
+          {user.isAdmin && (
+            <Link role="menuitem" href="/admin/verifications" className="block rounded-lg px-3 py-2 text-sm hover:bg-subtle" onClick={() => setMenu(false)}>
+              Review profile verifications
+            </Link>
+          )}
+          {user.role === "researcher" && (
+            <Link role="menuitem" href={`/researcher/${user.id}`} className="block rounded-lg px-3 py-2 text-sm hover:bg-subtle" onClick={() => setMenu(false)}>
+              My researcher page
+            </Link>
+          )}
           <Link role="menuitem" href="/account" className="block rounded-lg px-3 py-2 text-sm hover:bg-subtle" onClick={() => setMenu(false)}>
             Account settings
           </Link>

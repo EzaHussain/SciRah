@@ -8,6 +8,7 @@ export function NewsCard({ item, compact = false }: { item: NewsItem; compact?: 
     <article className="card group flex gap-4 overflow-hidden p-4 transition-colors hover:border-primary/50">
       <div className="min-w-0 flex-1">
         <p className="label mb-1 flex flex-wrap items-center gap-x-2 text-muted">
+          {item.provider === "sciencedaily" && <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-fg">New research</span>}
           <span className="truncate">{item.source}</span>
           <span aria-hidden="true">·</span>
           <time dateTime={item.publishedAt}>{timeAgo(item.publishedAt)}</time>

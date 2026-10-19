@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { HeaderLogo } from "./brand";
 import { GoogleIcon, SpinnerIcon } from "./icons";
+import { RolePicker, type Role } from "./RolePicker";
 
 /** Only allow same-site relative redirects. */
 export function safeNext(next: string | null): string {
@@ -19,6 +20,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Role | null>(null);
   const [busy, setBusy] = useState<null | "email" | "google">(null);
   const [error, setError] = useState<string | null>(params.get("error"));
   const [notice, setNotice] = useState<string | null>(null);
@@ -31,9 +33,15 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     setError(null);
     setNotice(null);
     try {
-      if (mode === "signup") await signUp(name.trim(), email.trim(), password);
-      else await signIn(email.trim(), password);
-      router.replace(next);
+      if (mode === "signup") {
+        if (!role) throw new Error("Please choose whether you are a researcher or a reader.");
+        await signUp(name.trim(), email.trim(), password, role);
+        // Researchers go straight to setting up their public profile.
+        router.replace(role === "researcher" ? "/account?setup=1" : next);
+      } else {
+        await signIn(email.trim(), password);
+        router.replace(next);
+      }
       router.refresh();
     } catch (err) {
       setError((err as Error).message);
@@ -80,10 +88,16 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           </div>
         ) : (
           <>
+            {mode === "signup" && (
+              <div className="mb-5">
+                <p className="mb-2 text-sm font-medium">Who are you?</p>
+                <RolePicker value={role} onChange={setRole} />
+              </div>
+            )}
             {googleEnabled ? (
               // A plain link (full-page navigation): the server route redirects to Google's consent screen.
               <a
-                href={`/auth/google?next=${encodeURIComponent(next)}`}
+                href={`/auth/google?next=${encodeURIComponent(next)}${mode === "signup" && role ? `&role=${role}` : ""}`}
                 onClick={() => setBusy("google")}
                 aria-disabled={busy !== null}
                 className={`btn-ghost w-full py-2.5 ${busy !== null ? "pointer-events-none opacity-60" : ""}`}

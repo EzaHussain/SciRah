@@ -22,6 +22,11 @@ api/   NestJS API — PostgreSQL, accounts (email + Google), sources, AI, feeds,
 - **Journal & publisher profiles** (papers published, citations, h-index, open-access share, landmark and latest papers).
 - **SciRah Score** (0–100) for researchers — a published formula over citations (log-scaled, field-normalised), h-index, publications, grants, patents and graduated students (`/score`). Researchers verify their profile with ORCID to add patents and students.
 - **Add a paper** manually (DOI lookup first); admins (`ADMIN_EMAILS`) approve submissions at `/admin/submissions`.
+- **Read the full paper in SciRah** for open-access papers: the complete article from Europe PMC (figures from NCBI's public PMC bucket), otherwise a verified free PDF, otherwise the open-access page. Subscription-only papers say so.
+- **Affiliations as printed on the paper** (authors with a, b, c superscripts, affiliations listed below, ✉ corresponding author).
+- **Researcher and reader accounts**: sign-up asks which. Researchers get a public page (`/researcher/<id>`), add their papers, and verify their publication profile (ORCID, or a "This is me" request reviewed by an admin at `/admin/verifications`). Verified researchers can enter their own numbers (e.g. from Google Scholar), patents and students.
+- **Researcher numbers from several sources**: OpenAlex and Semantic Scholar (matched through the researcher's papers) side by side, plus the verified researcher's own numbers.
+- **Research news** (ScienceDaily: stories about newly published studies), each linked to the paper it reports on; general press coverage only as a separate section of the News page.
 - Saved papers, personalised "For you" feed, trending papers, comments, researcher profiles.
 
 ## Setup (local)

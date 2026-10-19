@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { RoadDivider } from "@/components/brand";
 import { formatCount, PaperCard } from "@/components/PaperCard";
+import { AuthorMetricsPanel } from "@/components/AuthorMetricsPanel";
+import { AuthorOwnerPanel } from "@/components/AuthorOwnerPanel";
 import { ScoreCard } from "@/components/ScoreCard";
 import { ShareMenu } from "@/components/ShareMenu";
 import { YearBars } from "@/components/YearBars";
@@ -88,14 +90,21 @@ export default async function AuthorPage({
             </p>
           )}
         </div>
-        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
-          {stats.map((s) => (
-            <div key={s.label} className="card p-3.5">
-              <dt className="label text-muted">{s.label}</dt>
-              <dd className="mt-1 font-heading text-2xl font-semibold">{formatCount(s.value)}</dd>
-            </div>
-          ))}
-        </dl>
+        {a.source === "openalex" ? (
+          <AuthorMetricsPanel
+            authorId={a.id}
+            initial={{ works: a.worksCount ?? null, citations: a.citationCount ?? null, hIndex: a.hIndex ?? null, i10Index: a.i10Index ?? null }}
+          />
+        ) : (
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+            {stats.map((s) => (
+              <div key={s.label} className="card p-3.5">
+                <dt className="label text-muted">{s.label}</dt>
+                <dd className="mt-1 font-heading text-2xl font-semibold">{formatCount(s.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
       </header>
 
       {a.topics && a.topics.length > 0 && (
@@ -129,7 +138,8 @@ export default async function AuthorPage({
         </section>
 
         <aside className="space-y-4">
-          {a.source === "openalex" && <ScoreCard authorId={a.id} name={a.name} />}
+          {a.source === "openalex" && <AuthorOwnerPanel authorId={a.id} name={a.name} />}
+          {a.source === "openalex" && <ScoreCard authorId={a.id} />}
           <YearBars label="Citations per year" data={years.map((y) => ({ year: y.year, value: y.citations }))} />
 
           {a.coAuthors.length > 0 && (

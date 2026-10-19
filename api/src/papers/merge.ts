@@ -31,7 +31,7 @@ export function mergeTwo(a: Paper, b: Paper): Paper {
     abstract: longer(base.abstract, other.abstract),
     tldr: base.tldr ?? other.tldr,
     authors:
-      authorsWithIds(base) >= authorsWithIds(other) && base.authors.length ? base.authors : other.authors,
+      authorsWithIds(base) >= 0.8 * authorsWithIds(other) && base.authors.length ? base.authors : other.authors,
     venue: base.venue ?? other.venue,
     publisher: base.publisher ?? other.publisher,
     year: base.year ?? other.year,
@@ -47,6 +47,25 @@ export function mergeTwo(a: Paper, b: Paper): Paper {
     topics: base.topics.some((t) => t.id) ? base.topics : other.topics.some((t) => t.id) ? other.topics : base.topics.length ? base.topics : other.topics,
     sources: [...new Set([...base.sources, ...other.sources])],
   };
+  // Same author list from both records: fill per-author details (affiliations, corresponding author, ORCID)
+  // from whichever record has them, matching by position and surname.
+  const donor = merged.authors === base.authors ? other.authors : base.authors;
+  if (donor.length === merged.authors.length) {
+    const surname = (n: string) => n.trim().split(/\s+/).pop()?.toLowerCase().normalize('NFKD').replace(/[^a-z]/g, '');
+    merged.authors = merged.authors.map((x, i) => {
+      const d = donor[i];
+      if (!d || surname(d.name) !== surname(x.name)) return x;
+      return {
+        ...x,
+        affiliations: x.affiliations?.length ? x.affiliations : d.affiliations,
+        affiliation: x.affiliation ?? d.affiliation,
+        institutionId: x.institutionId ?? d.institutionId,
+        institutionUrl: x.institutionUrl ?? d.institutionUrl,
+        orcid: x.orcid ?? d.orcid,
+        corresponding: x.corresponding ?? d.corresponding,
+      };
+    });
+  }
   // Fill in author profile ids from the other record when names line up (e.g. S2 ids for CrossRef authors).
   if (!merged.authors.some((x) => x.id)) {
     const byName = new Map(other.authors.filter((x) => x.id).map((x) => [x.name.toLowerCase(), x.id]));

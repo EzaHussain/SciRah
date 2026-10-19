@@ -42,6 +42,7 @@ export function mapItem(it: CRItem): Paper | null {
       name: a.name ?? [a.given, a.family].filter(Boolean).join(' '),
       orcid: a.ORCID,
       affiliation: a.affiliation?.[0]?.name,
+      affiliations: a.affiliation?.length ? a.affiliation.map((x) => x.name) : undefined,
     })),
     venue: it['container-title']?.[0],
     publisher: it.publisher,

@@ -3,15 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { AiGraphic } from "@/components/AiGraphic";
+import { AuthorAffiliations } from "@/components/AuthorAffiliations";
 import { RoadDivider } from "@/components/brand";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { Comments } from "@/components/Comments";
 import { ExpandableText } from "@/components/ExpandableText";
+import { FullPaperButton } from "@/components/FullPaperButton";
 import { QuoteIcon, UnlockIcon } from "@/components/icons";
 import { formatCount } from "@/components/PaperCard";
 import { ShareMenu } from "@/components/ShareMenu";
 import { SummaryPanel } from "@/components/SummaryPanel";
-import { api, ApiError, authorHref, decodeParam, paperHref, readerHref, venueHref } from "@/lib/api";
+import { api, ApiError, decodeParam, paperHref, readerHref, venueHref } from "@/lib/api";
 import { SOURCE_LABEL, type Paper } from "@/lib/types";
 
 const getPaper = cache(async (id: string) => {
@@ -41,10 +43,7 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
   if (!paper) notFound();
 
   const here = paperHref(paper.id);
-  const institutions = uniqueInstitutions(paper);
   const read = (url: string) => readerHref(url, { title: paper.title, paperId: paper.id });
-  // Prefer the free PDF (always viewable inside SciRah); otherwise the publisher's page.
-  const primary = paper.pdfUrl ?? paper.sourceUrl;
 
   return (
     <article className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
@@ -61,21 +60,7 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
           </div>
           <h1 className="text-2xl leading-tight font-bold text-balance sm:text-3xl lg:text-[2.1rem]">{paper.title}</h1>
 
-          <p className="mt-4 text-[15px] leading-relaxed">
-            {paper.authors.slice(0, 20).map((a, i) => (
-              <span key={`${a.name}-${i}`}>
-                {a.id ? (
-                  <Link href={authorHref(a.id)} className="link font-medium">
-                    {a.name}
-                  </Link>
-                ) : (
-                  <span className="font-medium">{a.name}</span>
-                )}
-                {i < Math.min(paper.authors.length, 20) - 1 && <span className="text-muted">, </span>}
-              </span>
-            ))}
-            {paper.authors.length > 20 && <span className="text-muted"> and {paper.authors.length - 20} others</span>}
-          </p>
+          <AuthorAffiliations authors={paper.authors} />
 
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
             {paper.venue &&
@@ -104,17 +89,7 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            {primary && (
-              <Link href={read(primary)} className="btn-primary">
-                {paper.pdfUrl ? <UnlockIcon /> : null}
-                {paper.pdfUrl ? "Read free PDF" : "Read paper"}
-              </Link>
-            )}
-            {paper.pdfUrl && paper.sourceUrl && (
-              <Link href={read(paper.sourceUrl)} className="btn-ghost">
-                Publisher’s page
-              </Link>
-            )}
+            <FullPaperButton paperId={paper.id} publisherHref={paper.sourceUrl ? read(paper.sourceUrl) : undefined} />
             <BookmarkButton paperId={paper.id} variant="full" />
             <ShareMenu path={here} title={paper.title} text={paper.authors.slice(0, 3).map((a) => a.name).join(", ")} />
             <ExportMenu paperId={paper.id} />
@@ -176,25 +151,6 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
                   )}
                 </p>
               )}
-            </div>
-          )}
-
-          {institutions.length > 0 && (
-            <div className="card p-4">
-              <p className="label mb-3 text-muted">Labs & institutions</p>
-              <ul className="space-y-2 text-sm">
-                {institutions.map((inst) => (
-                  <li key={inst.name}>
-                    {inst.url ? (
-                      <Link href={readerHref(inst.url, { title: inst.name, back: here })} className="hover:text-primary">
-                        {inst.name}
-                      </Link>
-                    ) : (
-                      inst.name
-                    )}
-                  </li>
-                ))}
-              </ul>
             </div>
           )}
 
@@ -270,13 +226,4 @@ function IdRow({ label, value, href }: { label: string; value: string; href?: st
       </dd>
     </div>
   );
-}
-
-function uniqueInstitutions(paper: Paper) {
-  const seen = new Map<string, { name: string; url?: string }>();
-  for (const a of paper.authors) {
-    if (!a.affiliation || seen.has(a.affiliation)) continue;
-    seen.set(a.affiliation, { name: a.affiliation, url: a.institutionUrl });
-  }
-  return [...seen.values()].slice(0, 10);
 }

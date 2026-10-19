@@ -11,6 +11,9 @@ export interface PaperAuthor {
   affiliation?: string;
   institutionId?: string;
   institutionUrl?: string;
+  /** Every affiliation as printed on the paper. */
+  affiliations?: string[];
+  corresponding?: boolean;
 }
 
 export interface PaperTopic {
@@ -147,7 +150,21 @@ export interface SessionUser {
   googleLinked: boolean;
   autoAlerts: boolean;
   isAdmin?: boolean;
+  /** null until chosen (e.g. first Google sign-in). */
+  role: "reader" | "researcher" | null;
+  profile: ResearcherProfileFields;
+  claimedAuthorId: string | null;
   createdAt: string;
+}
+
+export interface ResearcherProfileFields {
+  affiliation: string | null;
+  position: string | null;
+  bio: string | null;
+  interests: string[];
+  website: string | null;
+  scholarUrl: string | null;
+  orcid: string | null;
 }
 
 export interface AlertFilters {
@@ -208,7 +225,7 @@ export interface NewsItem {
   snippet?: string;
   country?: string;
   topic?: string;
-  provider: "gdelt" | "googlenews";
+  provider: "gdelt" | "googlenews" | "sciencedaily";
 }
 
 export type NewsRegion = "pk" | "world";
@@ -261,12 +278,65 @@ export interface SciRahScore {
   totalWorks: number;
 }
 
+export interface AuthorMetricsSet {
+  works: number | null;
+  citations: number | null;
+  hIndex: number | null;
+  i10Index: number | null;
+}
+
 export interface AuthorClaim {
+  /** ORCID sign-in is configured on the server. */
   claimable: boolean;
   claimed: boolean;
   mine: boolean;
+  method: "orcid" | "admin" | null;
+  requestPending?: boolean;
   patents: number;
   students: number;
+  metrics: (AuthorMetricsSet & { source: string | null; url: string | null }) | null;
+  owner: {
+    userId: string;
+    name: string;
+    avatarUrl: string | null;
+    affiliation: string | null;
+    position: string | null;
+    bio: string | null;
+    interests: string[];
+    website: string | null;
+    scholarUrl: string | null;
+  } | null;
+}
+
+export interface AuthorMetrics {
+  openalex: AuthorMetricsSet;
+  semanticScholar: (AuthorMetricsSet & { url: string }) | null;
+  verified: (AuthorMetricsSet & { source: string | null; url: string | null; updatedAt: string | null }) | null;
+}
+
+export type FullText =
+  | { kind: "article"; pmcid: string; source: string }
+  | { kind: "pdf"; url: string; source: string }
+  | { kind: "page"; url: string; source: string }
+  | { kind: "none"; reason: string };
+
+export interface FullArticle {
+  pmcid: string;
+  title: string;
+  abstractHtml: string;
+  sections: { title: string; html: string }[];
+  references: string[];
+  license?: string;
+  sourceUrl: string;
+  pdfUrl?: string;
+}
+
+export interface PublicResearcher extends ResearcherProfileFields {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  claimedAuthorId: string | null;
+  papers: Paper[];
 }
 
 export interface Submission {

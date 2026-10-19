@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Backdrop, HeaderLogo, RoadDivider } from "@/components/brand";
 import { Header } from "@/components/Header";
+import { RoleNudge } from "@/components/RoleNudge";
 import { readerHref } from "@/lib/api";
 import { siteUrl } from "@/lib/paper-export";
 import { themeInitScript } from "@/components/ThemeToggle";
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </a>
           <Backdrop />
           <Header />
+          <RoleNudge />
           <main id="main" className="flex-1">
             {children}
           </main>

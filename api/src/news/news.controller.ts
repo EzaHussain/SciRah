@@ -18,7 +18,13 @@ export class NewsController {
     return this.news.search(query, region(r), span(s), 40);
   }
 
-  /** News matched to the signed-in user's searches, alerts and saved papers (general science news otherwise). */
+  /** The research paper a ScienceDaily story is about. */
+  @Get('story-paper')
+  storyPaper(@Query('url') url?: string) {
+    return this.news.paperForStory(url);
+  }
+
+  /** Research news matched to the signed-in user's searches, alerts and saved papers (latest research news otherwise). */
   @Get('for-you')
   @UseGuards(OptionalAuthGuard)
   forYou(@CurrentUser() user: AuthUser | null, @Query('region') r?: string, @Query('span') s?: string) {

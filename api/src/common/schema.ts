@@ -110,6 +110,42 @@ create table if not exists author_claims (
   updated_at timestamptz not null default now()
 );
 
+-- Account type and public researcher profile (added later; idempotent for existing databases)
+alter table users add column if not exists role text check (role in ('reader', 'researcher'));
+alter table users add column if not exists affiliation text;
+alter table users add column if not exists position text;
+alter table users add column if not exists bio text;
+alter table users add column if not exists interests text[] not null default '{}';
+alter table users add column if not exists website text;
+alter table users add column if not exists scholar_url text;
+alter table users add column if not exists orcid text;
+
+-- Verified researcher profiles: who owns which OpenAlex author profile, plus the numbers they corrected
+alter table author_claims alter column orcid drop not null;
+alter table author_claims add column if not exists method text not null default 'orcid';
+alter table author_claims add column if not exists citations int check (citations between 0 and 10000000);
+alter table author_claims add column if not exists h_index int check (h_index between 0 and 1000);
+alter table author_claims add column if not exists i10_index int check (i10_index between 0 and 100000);
+alter table author_claims add column if not exists works int check (works between 0 and 100000);
+alter table author_claims add column if not exists metrics_source text;
+alter table author_claims add column if not exists metrics_url text;
+alter table author_claims add column if not exists metrics_updated_at timestamptz;
+create unique index if not exists author_claims_user_idx on author_claims (user_id);
+
+-- "This is me" requests reviewed by an admin (used when ORCID sign-in isn't available or the ORCID doesn't match)
+create table if not exists author_claim_requests (
+  id uuid primary key default gen_random_uuid(),
+  author_id text not null,
+  user_id uuid not null references users (id) on delete cascade,
+  message text,
+  evidence_url text,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  review_note text,
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz
+);
+create unique index if not exists author_claim_requests_pending_idx on author_claim_requests (author_id, user_id) where status = 'pending';
+
 create table if not exists search_history (
   id bigint generated always as identity primary key,
   user_id uuid not null references users (id) on delete cascade,

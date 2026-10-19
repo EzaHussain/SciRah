@@ -276,3 +276,83 @@ h4 {
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* ---- Full-text articles (HTML built by the API from an allow-list of tags) ---- */
+.article-body {
+  line-height: 1.75;
+  color: color-mix(in srgb, var(--fg) 92%, transparent);
+  overflow-wrap: anywhere;
+}
+.article-body p {
+  margin: 0.85em 0;
+}
+.article-body h3 {
+  margin: 1.6em 0 0.4em;
+  font-size: 1.12rem;
+  font-weight: 600;
+}
+.article-body h4 {
+  margin: 1.3em 0 0.3em;
+  font-weight: 600;
+}
+.article-body ul,
+.article-body ol {
+  margin: 0.8em 0;
+  padding-left: 1.4em;
+}
+.article-body ul {
+  list-style: disc;
+}
+.article-body ol {
+  list-style: decimal;
+}
+.article-body figure {
+  margin: 1.6em 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--card-solid);
+}
+.article-body figure img {
+  max-height: 75vh;
+  object-fit: contain;
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 10px;
+  border-radius: 8px;
+  background: #fff;
+}
+.article-body figcaption {
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.article-body .table-scroll {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+.article-body table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  min-width: 100%;
+}
+.article-body th,
+.article-body td {
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.article-body th {
+  background: var(--subtle);
+  font-weight: 600;
+}
+.article-body code.formula {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--subtle);
+  border-radius: 4px;
+  padding: 0 4px;
+}

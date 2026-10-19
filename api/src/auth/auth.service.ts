@@ -27,7 +27,22 @@ export interface PublicUser extends AuthUser {
   autoAlerts: boolean;
   /** Can review manually added papers (email listed in ADMIN_EMAILS). */
   isAdmin: boolean;
+  /** null until the user has chosen (accounts created before roles existed, or via Google). */
+  role: 'reader' | 'researcher' | null;
+  profile: ResearcherProfile;
+  /** OpenAlex author profile this user has verified as theirs, if any. */
+  claimedAuthorId: string | null;
   createdAt: string;
+}
+
+export interface ResearcherProfile {
+  affiliation: string | null;
+  position: string | null;
+  bio: string | null;
+  interests: string[];
+  website: string | null;
+  scholarUrl: string | null;
+  orcid: string | null;
 }
 
 export const isAdmin = (u: { email: string }) => config.adminEmails.includes(u.email.toLowerCase());
@@ -42,10 +57,21 @@ interface UserRow {
   token_version: number;
   auto_alerts: boolean;
   created_at: string;
+  role: 'reader' | 'researcher' | null;
+  affiliation: string | null;
+  position: string | null;
+  bio: string | null;
+  interests: string[];
+  website: string | null;
+  scholar_url: string | null;
+  orcid: string | null;
+  claimed_author_id: string | null;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const USER_COLS = 'id,email,password_hash,google_sub,display_name,avatar_url,token_version,auto_alerts,created_at';
+const USER_COLS =
+  'id,email,password_hash,google_sub,display_name,avatar_url,token_version,auto_alerts,created_at,role,affiliation,position,bio,interests,website,scholar_url,orcid,' +
+  '(select author_id from author_claims c where c.user_id = users.id) as claimed_author_id';
 
 function toPublic(u: UserRow): PublicUser {
   return {
@@ -57,6 +83,17 @@ function toPublic(u: UserRow): PublicUser {
     googleLinked: !!u.google_sub,
     autoAlerts: u.auto_alerts,
     isAdmin: isAdmin(u),
+    role: u.role,
+    profile: {
+      affiliation: u.affiliation,
+      position: u.position,
+      bio: u.bio,
+      interests: u.interests ?? [],
+      website: u.website,
+      scholarUrl: u.scholar_url,
+      orcid: u.orcid,
+    },
+    claimedAuthorId: u.claimed_author_id,
     createdAt: u.created_at,
   };
 }
@@ -121,7 +158,7 @@ export class AuthService {
     if (n > max) throw new HttpException('Too many attempts. Please wait a few minutes and try again.', HttpStatus.TOO_MANY_REQUESTS);
   }
 
-  async signup(input: { email?: unknown; password?: unknown; name?: unknown }, ip: string) {
+  async signup(input: { email?: unknown; password?: unknown; name?: unknown; role?: unknown }, ip: string) {
     const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
     const password = typeof input.password === 'string' ? input.password : '';
     const name = typeof input.name === 'string' ? input.name.trim().slice(0, 80) : '';
@@ -136,10 +173,12 @@ export class AuthService {
         throw new ConflictException('This email is registered with Google. Use “Continue with Google” to sign in.');
       throw new ConflictException('An account with this email already exists. Please sign in instead.');
     }
+    const role = input.role === 'researcher' || input.role === 'reader' ? input.role : null;
+    if (!role) throw new BadRequestException('Please choose whether you are a researcher or a reader');
     const hash = await hashPassword(password);
     const row = await this.db.one<UserRow>(
-      `insert into users (email, password_hash, display_name, last_login_at) values ($1, $2, $3, now()) returning ${USER_COLS}`,
-      [email, hash, name || null],
+      `insert into users (email, password_hash, display_name, role, last_login_at) values ($1, $2, $3, $4, now()) returning ${USER_COLS}`,
+      [email, hash, name || null, role],
     );
     return this.issue(row!);
   }
@@ -274,9 +313,46 @@ export class AuthService {
     return toPublic(row);
   }
 
-  async update(userId: string, input: { name?: unknown; autoAlerts?: unknown }): Promise<PublicUser> {
+  async update(userId: string, input: Record<string, unknown>): Promise<PublicUser> {
     const sets: string[] = [];
     const vals: unknown[] = [userId];
+    const set = (col: string, v: unknown) => {
+      vals.push(v);
+      sets.push(`${col} = $${vals.length}`);
+    };
+    if (input.role !== undefined) {
+      if (input.role !== 'reader' && input.role !== 'researcher') throw new BadRequestException('Invalid account type');
+      set('role', input.role);
+    }
+    // Researcher profile (free text, shown publicly on the researcher's SciRah page).
+    const text = (k: string, col: string, max: number) => {
+      if (input[k] === undefined) return;
+      const v = typeof input[k] === 'string' ? (input[k] as string).replace(/\s+/g, ' ').trim().slice(0, max) : '';
+      set(col, v || null);
+    };
+    const link = (k: string, col: string) => {
+      if (input[k] === undefined) return;
+      const v = typeof input[k] === 'string' ? (input[k] as string).trim() : '';
+      if (v && !/^https?:\/\/[^\s]+\.[^\s]+$/i.test(v)) throw new BadRequestException('Links must start with http:// or https://');
+      set(col, v.slice(0, 500) || null);
+    };
+    text('affiliation', 'affiliation', 200);
+    text('position', 'position', 120);
+    if (input.bio !== undefined) set('bio', typeof input.bio === 'string' ? input.bio.trim().slice(0, 2000) || null : null);
+    link('website', 'website');
+    link('scholarUrl', 'scholar_url');
+    if (input.orcid !== undefined) {
+      const m = typeof input.orcid === 'string' ? input.orcid.match(/\d{4}-\d{4}-\d{4}-\d{3}[\dX]/i) : null;
+      if (input.orcid && !m) throw new BadRequestException('ORCID iD should look like 0000-0002-1825-0097');
+      set('orcid', m ? m[0].toUpperCase() : null);
+    }
+    if (input.interests !== undefined) {
+      const list = (Array.isArray(input.interests) ? input.interests : String(input.interests ?? '').split(','))
+        .map((x) => String(x).trim().slice(0, 60))
+        .filter(Boolean)
+        .slice(0, 15);
+      set('interests', list);
+    }
     if (typeof input.name === 'string') {
       const name = input.name.trim().slice(0, 80);
       if (!name) throw new BadRequestException('Name cannot be empty');

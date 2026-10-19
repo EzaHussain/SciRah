@@ -14,7 +14,7 @@ interface AuthState {
   /** Current API token (kept in memory; the httpOnly cookie is the source of truth). */
   getToken: () => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string, role: "reader" | "researcher") => Promise<void>;
   signOut: () => Promise<void>;
   /** Re-read the session (e.g. after editing the profile) or adopt a freshly issued token. */
   refresh: (newToken?: string) => Promise<void>;
@@ -93,8 +93,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession((s) => ({ ...(s ?? { apiReachable: true, accounts: true, google: false }), user: r.user, token: r.token }));
   }, []);
 
-  const signUp = useCallback(async (name: string, email: string, password: string) => {
-    const r = await postJson<{ user: SessionUser; token: string }>("/api/auth/signup", { name, email, password });
+  const signUp = useCallback(async (name: string, email: string, password: string, role: "reader" | "researcher") => {
+    const r = await postJson<{ user: SessionUser; token: string }>("/api/auth/signup", { name, email, password, role });
     setSession((s) => ({ ...(s ?? { apiReachable: true, accounts: true, google: false }), user: r.user, token: r.token }));
   }, []);
 

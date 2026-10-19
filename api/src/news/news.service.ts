@@ -1,21 +1,34 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { CacheService } from '../common/cache.service.js';
 import { DbService } from '../common/db.service.js';
+import { fetchText } from '../common/http.js';
 import { FeedService } from '../feed/feed.service.js';
-import { gdelt, googleNews, titleKey, type NewsItem, type NewsRegion, type NewsSpan } from './sources.js';
+import { PapersService } from '../papers/papers.service.js';
+import { normalizeDoi } from '../papers/types.js';
+import {
+  gdelt,
+  googleNews,
+  matchResearchNews,
+  scienceDailyPool,
+  titleKey,
+  type NewsItem,
+  type NewsRegion,
+  type NewsSpan,
+} from './sources.js';
 
 export interface NewsResult {
   query: string;
   region: NewsRegion;
   span: NewsSpan;
+  /** Research news: stories about newly published papers (ScienceDaily). */
   items: (NewsItem & { topic?: string })[];
+  /** General press coverage of the topic (Google News + GDELT) — only on the News page. */
+  press: NewsItem[];
   providers: { name: string; ok: boolean; count: number; error?: string }[];
 }
 
 export const SPANS: NewsSpan[] = ['24h', '7d', '30d'];
-
-/** Used for signed-out visitors and users with no history yet. */
-const DEFAULT_TOPICS = ['scientific research study', 'university research Pakistan', 'climate health study'];
+const SPAN_MS: Record<NewsSpan, number> = { '24h': 86_400_000, '7d': 7 * 86_400_000, '30d': 30 * 86_400_000 };
 
 @Injectable()
 export class NewsService {
@@ -25,15 +38,27 @@ export class NewsService {
     private readonly cache: CacheService,
     private readonly db: DbService,
     private readonly feed: FeedService,
+    private readonly papers: PapersService,
   ) {}
 
+  /** All recent research stories (refreshed hourly). */
+  researchPool(): Promise<NewsItem[]> {
+    return this.cache.wrap('news:research:pool:v1', 60 * 60, () => scienceDailyPool());
+  }
+
+  private async research(query: string, span: NewsSpan): Promise<NewsItem[]> {
+    const cutoff = new Date(Date.now() - SPAN_MS[span]).toISOString();
+    const pool = await this.researchPool();
+    return matchResearchNews(pool, query).filter((it) => it.publishedAt >= cutoff);
+  }
+
   /**
-   * News about one topic from Google News (+ GDELT unless `fast`), merged and de-duplicated, newest first.
-   * GDELT asks for at most one request every ~5 seconds, so multi-topic views use `fast`.
+   * News about one topic: research stories first; with `fast` (alerts, home page) only those.
+   * Otherwise also general press coverage from Google News + GDELT (GDELT allows ~1 request / 5 s).
    */
   async search(q: string, region: NewsRegion = 'world', span: NewsSpan = '7d', limit = 30, fast = false): Promise<NewsResult> {
     const query = q.trim().slice(0, 120);
-    const key = `news:v1:${fast ? 'fast' : 'full'}:${region}:${span}:${query.toLowerCase()}`;
+    const key = `news:v2:${fast ? 'fast' : 'full'}:${region}:${span}:${query.toLowerCase()}`;
     const cached = await this.cache.get<NewsResult>(key);
     if (cached) return cached;
     const pending = this.inflight.get(key);
@@ -53,11 +78,12 @@ export class NewsService {
           return [];
         }
       };
-      const [gn, g] = await Promise.all([
-        run('Google News', () => googleNews(query, region, span, 40)),
+      const [research, gn, g] = await Promise.all([
+        run('ScienceDaily', () => this.research(query, span)),
+        fast ? Promise.resolve([] as NewsItem[]) : run('Google News', () => googleNews(query, region, span, 40)),
         fast ? Promise.resolve([] as NewsItem[]) : run('GDELT', () => gdelt(query, region, span, 40)),
       ]);
-      const result: NewsResult = { query, region, span, items: mergeNews([...gn, ...g]).slice(0, limit), providers };
+      const result: NewsResult = { query, region, span, items: research.slice(0, limit), press: mergeNews([...gn, ...g]).slice(0, limit), providers };
       // Cache good answers for 20 minutes; partial failures only briefly so they're retried soon.
       await this.cache.set(key, result, providers.every((p) => p.ok) ? 20 * 60 : 3 * 60);
       return result;
@@ -90,25 +116,47 @@ export class NewsService {
     return topics.slice(0, max);
   }
 
-  /** "For you": news across the user's topics, interleaved so one topic can't crowd out the rest. */
-  async forYou(userId: string | null, region: NewsRegion, span: NewsSpan) {
+  /**
+   * "For you": research stories on the user's topics, interleaved so one topic can't crowd out the rest,
+   * topped up with the latest research news. Only stories about published research — no general news.
+   */
+  async forYou(userId: string | null, _region: NewsRegion, span: NewsSpan) {
     const personal = userId ? await this.topicsFor(userId).catch(() => []) : [];
-    const topics = personal.length ? personal : DEFAULT_TOPICS;
-    const results = await Promise.all(topics.map((t) => this.search(t, region, span, 12, true)));
+    const pool = await this.researchPool().catch(() => [] as NewsItem[]);
+    const cutoff = new Date(Date.now() - SPAN_MS[span === '24h' ? '7d' : span]).toISOString();
+    const recent = pool.filter((it) => it.publishedAt >= cutoff);
+
     const seen = new Set<string>();
     const items: NewsResult['items'] = [];
-    for (let i = 0; i < 12; i++) {
-      for (const r of results) {
-        const it = r.items[i];
-        if (!it) continue;
-        const k = titleKey(it.title);
-        if (seen.has(k)) continue;
-        seen.add(k);
-        items.push({ ...it, topic: r.query });
-      }
+    const add = (it: NewsItem, topic?: string) => {
+      const k = titleKey(it.title);
+      if (seen.has(k)) return;
+      seen.add(k);
+      items.push({ ...it, topic });
+    };
+    const perTopic = personal.map((t) => ({ t, list: matchResearchNews(recent, t) }));
+    for (let i = 0; i < 12; i++) for (const { t, list } of perTopic) if (list[i]) add(list[i], t);
+    const matched = items.length;
+    for (const it of recent) {
+      if (items.length >= 40) break;
+      add(it);
     }
-    items.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-    return { personalized: personal.length > 0, topics, region, span, items: items.slice(0, 60) };
+    return { personalized: matched > 0, topics: personal, items: items.slice(0, 40) };
+  }
+
+  /**
+   * The research paper a ScienceDaily story is about (its "Journal Reference" DOI), resolved to a SciRah
+   * paper so readers can open the actual study.
+   */
+  async paperForStory(url: unknown) {
+    if (typeof url !== 'string' || !/^https:\/\/(www\.)?sciencedaily\.com\/releases\/[\w/.-]+$/i.test(url)) throw new BadRequestException('Unsupported story link');
+    return this.cache.wrap(`news:story-paper:v1:${url}`, 7 * 86_400, async () => {
+      const html = await fetchText(url, { timeoutMs: 15_000, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SciRah/1.0)' } }).catch(() => '');
+      const doi = normalizeDoi(html.match(/doi\.org\/(10\.\d{4,9}\/[^\s"<>&]+)/i)?.[1] ?? html.match(/DOI:\s*(10\.\d{4,9}\/[^\s"<>&]+)/i)?.[1]);
+      if (!doi) return { doi: null, paperId: null, title: null, venue: null };
+      const paper = await this.papers.getPaper(`doi:${doi.replace(/[.,;)]+$/, '')}`).catch(() => null);
+      return { doi, paperId: paper?.id ?? `doi:${doi}`, title: paper?.title ?? null, venue: paper?.venue ?? null };
+    });
   }
 }
 

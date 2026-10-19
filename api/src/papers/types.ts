@@ -22,6 +22,10 @@ export interface PaperAuthor {
   affiliation?: string;
   institutionId?: string; // OpenAlex I123…
   institutionUrl?: string; // ROR / homepage
+  /** Every affiliation exactly as printed on the paper (e.g. "School of …, Beijing 100049, PR China"). */
+  affiliations?: string[];
+  /** Marked as corresponding author on the paper. */
+  corresponding?: boolean;
 }
 
 export interface PaperTopic {

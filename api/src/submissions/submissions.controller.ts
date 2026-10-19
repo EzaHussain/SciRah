@@ -66,7 +66,9 @@ export class SubmissionsService {
     if (url && !/^https?:\/\//i.test(url)) throw new BadRequestException('The link must start with http:// or https://');
     if (url) url = new URL(url).toString();
 
-    const status = isAdmin(user) ? 'approved' : 'pending';
+    // Admins and verified researchers (who own a claimed profile) publish straight away; others are reviewed.
+    const verified = await this.db.one('select 1 from author_claims where user_id = $1', [user.id]);
+    const status = isAdmin(user) || verified ? 'approved' : 'pending';
     const row = await this.db.one<UserPaperRow>(
       `insert into user_papers (submitted_by, title, authors, year, venue, doi, url, abstract, status, reviewed_at)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, case when $9 = 'approved' then now() end) returning *`,
@@ -145,5 +147,55 @@ export class SubmissionsController {
     if (!isAdmin(user)) throw new ForbiddenException('Only SciRah admins can review submissions');
     if (!/^[0-9a-f-]{36}$/i.test(id)) throw new BadRequestException('Invalid id');
     return this.submissions.review(id, body ?? {});
+  }
+}
+
+/** Public SciRah researcher pages: the profile a researcher wrote, plus the papers they added. */
+@Controller('researchers')
+export class ResearchersController {
+  constructor(private readonly db: DbService) {}
+
+  @Get(':userId')
+  async get(@Param('userId') userId: string) {
+    if (!/^[0-9a-f-]{36}$/i.test(userId)) throw new BadRequestException('Invalid id');
+    const u = await this.db.one<{
+      id: string;
+      display_name: string | null;
+      email: string;
+      avatar_url: string | null;
+      role: string | null;
+      affiliation: string | null;
+      position: string | null;
+      bio: string | null;
+      interests: string[];
+      website: string | null;
+      scholar_url: string | null;
+      orcid: string | null;
+      claimed_author_id: string | null;
+    }>(
+      `select id, display_name, email, avatar_url, role, affiliation, position, bio, interests, website, scholar_url, orcid,
+         (select author_id from author_claims c where c.user_id = users.id) as claimed_author_id
+       from users where id = $1`,
+      [userId],
+    );
+    if (!u || u.role !== 'researcher') throw new NotFoundException('Researcher not found');
+    const papers = await this.db.query<UserPaperRow>(
+      "select * from user_papers where submitted_by = $1 and status = 'approved' order by year desc nulls last, created_at desc limit 200",
+      [userId],
+    );
+    return {
+      userId: u.id,
+      name: u.display_name || u.email.split('@')[0],
+      avatarUrl: u.avatar_url,
+      affiliation: u.affiliation,
+      position: u.position,
+      bio: u.bio,
+      interests: u.interests ?? [],
+      website: u.website,
+      scholarUrl: u.scholar_url,
+      orcid: u.orcid,
+      claimedAuthorId: u.claimed_author_id,
+      papers: papers.map(userPaperToPaper).filter(Boolean),
+    };
   }
 }

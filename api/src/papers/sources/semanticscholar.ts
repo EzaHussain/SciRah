@@ -179,3 +179,59 @@ export async function getAuthor(authorId: string): Promise<AuthorProfile | null>
     source: 'semanticscholar',
   };
 }
+
+const normName = (s: string) =>
+  s
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, ' ')
+    .split(/[\s-]+/)
+    .filter(Boolean);
+
+/** Same person? Last names equal and first initials equal (handles "A. Kausar" vs "Ayesha Kausar"). */
+function sameName(a: string, b: string) {
+  const x = normName(a);
+  const y = normName(b);
+  if (!x.length || !y.length) return false;
+  return x[x.length - 1] === y[y.length - 1] && x[0][0] === y[0][0];
+}
+
+export interface S2AuthorMetrics {
+  authorId: string;
+  name: string;
+  paperCount?: number;
+  citationCount?: number;
+  hIndex?: number;
+  url: string;
+}
+
+/**
+ * Find a researcher's Semantic Scholar profile through papers we already know are theirs (by DOI),
+ * instead of by name alone (names are ambiguous), and return its metrics.
+ */
+export async function authorMetricsByDois(name: string, dois: string[]): Promise<S2AuthorMetrics | null> {
+  const votes = new Map<string, number>();
+  for (const doi of dois.slice(0, 3)) {
+    const p = await fetchJson<{ authors?: { authorId?: string; name: string }[] }>(`${BASE}/paper/DOI:${encodeURIComponent(doi)}?fields=authors`, {
+      headers: headers(),
+    }).catch(() => null);
+    const hit = p?.authors?.find((a) => a.authorId && sameName(a.name, name));
+    if (hit?.authorId) votes.set(hit.authorId, (votes.get(hit.authorId) ?? 0) + 1);
+  }
+  const best = [...votes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!best) return null;
+  const a = await fetchJson<{ authorId: string; name: string; paperCount?: number; citationCount?: number; hIndex?: number; url?: string }>(
+    `${BASE}/author/${best}?fields=name,paperCount,citationCount,hIndex,url`,
+    { headers: headers() },
+  ).catch(() => null);
+  if (!a) return null;
+  return {
+    authorId: a.authorId,
+    name: a.name,
+    paperCount: a.paperCount,
+    citationCount: a.citationCount,
+    hIndex: a.hIndex,
+    url: a.url ?? `https://www.semanticscholar.org/author/${a.authorId}`,
+  };
+}

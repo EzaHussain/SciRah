@@ -9,11 +9,12 @@
   },
   "author": "",
   "license": "ISC",
-  "description": "SciRah API \u2014 aggregates scholarly APIs",
+  "description": "SciRah API — aggregates scholarly APIs",
   "dependencies": {
     "@nestjs/common": "^12.1.2",
     "@nestjs/core": "^12.1.2",
     "@nestjs/platform-express": "^12.1.2",
+    "fast-xml-parser": "^5.11.2",
     "pg": "^8.23.1",
     "redis": "^6.3.0",
     "reflect-metadata": "^0.2.2",

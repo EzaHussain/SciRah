@@ -19,6 +19,8 @@ interface ForYou {
 interface TopicNews {
   query: string;
   items: NewsItem[];
+  /** General press coverage (shown after the research news). */
+  press: NewsItem[];
   providers: { name: string; ok: boolean; count: number; error?: string }[];
 }
 
@@ -42,7 +44,7 @@ function News() {
   const params = useSearchParams();
   const q = (params.get("q") ?? "").trim();
   const region: NewsRegion = params.get("region") === "pk" ? "pk" : "world";
-  const span: NewsSpan = (["24h", "7d", "30d"] as const).find((s) => s === params.get("span")) ?? "7d";
+  const span: NewsSpan = (["24h", "7d", "30d"] as const).find((s) => s === params.get("span")) ?? "30d";
   const [input, setInput] = useState(q);
   const [result, setResult] = useState<{ key: string; data?: ForYou | TopicNews; error?: string } | null>(null);
   const requestKey = `${q}|${region}|${span}|${user?.id ?? "anon"}`;
@@ -81,7 +83,7 @@ function News() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
-      <SectionTitle kicker="News" title={q ? `News about “${q}”` : forYou?.personalized ? "News on your research topics" : "Research news"} />
+      <SectionTitle kicker="Research news" title={q ? `Research news about “${q}”` : forYou?.personalized ? "Research news on your topics" : "Latest research news"} />
 
       <form
         role="search"
@@ -118,7 +120,7 @@ function News() {
           ]}
           onChange={(v) => setParam({ region: v === "world" ? null : v })}
         />
-        <Segmented label="Time" value={span} options={SPANS} onChange={(v) => setParam({ span: v === "7d" ? null : v })} />
+        <Segmented label="Time" value={span} options={SPANS} onChange={(v) => setParam({ span: v === "30d" ? null : v })} />
         {q && (
           <>
             <button
@@ -180,19 +182,41 @@ function News() {
             <NewsCardSkeleton key={i} />
           ))}
         </div>
-      ) : data.items.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-muted">
-          <p className="font-medium text-fg">No news found</p>
-          <p className="mt-1">Try a longer time range, the Worldwide region, or a broader topic.</p>
-        </div>
       ) : (
-        <ul className="space-y-3">
-          {data.items.map((it) => (
-            <li key={it.id}>
-              <NewsCard item={it} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <p className="mb-3 text-sm text-muted">
+            Stories about newly published research — each one links to the study it reports on.
+          </p>
+          {data.items.length === 0 ? (
+            <div className="card p-8 text-center text-sm text-muted">
+              <p className="font-medium text-fg">No research news{q ? ` about “${q}”` : ""} in this period</p>
+              <p className="mt-1">Try “30 days” or a broader topic.</p>
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {data.items.map((it) => (
+                <li key={it.id}>
+                  <NewsCard item={it} />
+                </li>
+              ))}
+            </ul>
+          )}
+          {"press" in data && data.press.length > 0 && (
+            <details className="mt-10">
+              <summary className="cursor-pointer font-heading text-lg font-semibold">
+                More coverage in the press <span className="text-sm font-normal text-muted">({data.press.length})</span>
+              </summary>
+              <p className="mt-2 mb-3 text-sm text-muted">General news that mentions this topic. Some news sites don’t allow being shown inside SciRah.</p>
+              <ul className="space-y-3">
+                {data.press.map((it) => (
+                  <li key={it.id}>
+                    <NewsCard item={it} />
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </>
       )}
 
       {"providers" in (data ?? {}) && (

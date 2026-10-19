@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { SectionTitle } from "@/components/brand";
 import { Avatar } from "@/components/Header";
 import { GoogleIcon, SpinnerIcon } from "@/components/icons";
+import { ResearcherSettings } from "@/components/ResearcherSettings";
 import { api, ApiError } from "@/lib/api";
 
 export default function AccountPage() {
@@ -48,6 +49,9 @@ export default function AccountPage() {
       </div>
 
       <NameForm initial={user.name} onSaved={() => refresh()} getToken={getToken} />
+      <Suspense>
+        <ResearcherSettings user={user} getToken={getToken} onSaved={() => refresh()} />
+      </Suspense>
       <PasswordForm hasPassword={user.hasPassword} getToken={getToken} onChanged={(t) => refresh(t)} />
 
       <section className="card space-y-4 p-5">

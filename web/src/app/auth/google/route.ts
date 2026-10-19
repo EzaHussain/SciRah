@@ -8,6 +8,8 @@ const safeNext = (n: string | null) => (n && n.startsWith("/") && !n.startsWith(
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
   const next = safeNext(req.nextUrl.searchParams.get("next"));
+  const roleParam = req.nextUrl.searchParams.get("role");
+  const role = roleParam === "researcher" || roleParam === "reader" ? roleParam : undefined;
   const state = randomBytes(24).toString("base64url");
   const redirectUri = `${origin}/auth/google/callback`;
 
@@ -17,6 +19,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(msg)}&next=${encodeURIComponent(next)}`);
   }
   const res = NextResponse.redirect(r.data.url);
-  res.cookies.set(OAUTH_COOKIE, JSON.stringify({ state, next }), oauthCookieOptions(req));
+  res.cookies.set(OAUTH_COOKIE, JSON.stringify({ state, next, role }), oauthCookieOptions(req));
   return res;
 }

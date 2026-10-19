@@ -14,7 +14,7 @@ export interface NewsItem {
   imageUrl?: string;
   snippet?: string;
   country?: string;
-  provider: 'gdelt' | 'googlenews';
+  provider: 'gdelt' | 'googlenews' | 'sciencedaily';
 }
 
 function hostOf(u: string) {
@@ -131,4 +131,86 @@ export async function googleNews(q: string, region: NewsRegion, span: NewsSpan, 
     });
   }
   return out;
+}
+
+// ---- ScienceDaily: news about newly published research (each story is based on one paper) ----
+
+const SCIENCEDAILY_FEEDS = [
+  'all',
+  'top',
+  'top/science',
+  'top/health',
+  'top/technology',
+  'top/environment',
+  'top/society',
+  'health_medicine',
+  'mind_brain',
+  'plants_animals',
+  'earth_climate',
+  'space_time',
+  'matter_energy',
+  'computers_math',
+  'fossils_ruins',
+  'science_society',
+];
+
+async function scienceDailyFeed(feed: string): Promise<NewsItem[]> {
+  const xml = await fetchText(`https://www.sciencedaily.com/rss/${feed}.xml`, { timeoutMs: 15_000 });
+  const items: NewsItem[] = [];
+  for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+    const block = m[1];
+    const pick = (tag: string) => block.match(new RegExp(String.raw`<${tag}>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</${tag}>`))?.[1]?.trim();
+    const url = pick('link');
+    const title = pick('title');
+    if (!url || !title) continue;
+    const date = pick('pubDate');
+    items.push({
+      id: newsId(url),
+      title: decodeEntities(stripTags(title) ?? title),
+      url,
+      source: 'ScienceDaily',
+      domain: 'sciencedaily.com',
+      publishedAt: date && !Number.isNaN(Date.parse(date)) ? new Date(date).toISOString() : new Date().toISOString(),
+      snippet: stripTags(decodeEntities(pick('description') ?? '')),
+      provider: 'sciencedaily',
+    });
+  }
+  return items;
+}
+
+/** Recent research news across all ScienceDaily subjects, de-duplicated, newest first. */
+export async function scienceDailyPool(): Promise<NewsItem[]> {
+  const settled = await Promise.allSettled(SCIENCEDAILY_FEEDS.map(scienceDailyFeed));
+  const byUrl = new Map<string, NewsItem>();
+  for (const r of settled) if (r.status === 'fulfilled') for (const it of r.value) if (!byUrl.has(it.url)) byUrl.set(it.url, it);
+  if (!byUrl.size) {
+    const failed = settled.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+    throw new Error(`ScienceDaily unavailable: ${(failed?.reason as Error)?.message ?? 'no items'}`);
+  }
+  return [...byUrl.values()].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+}
+
+const STOP = new Set(['the', 'and', 'for', 'with', 'from', 'into', 'study', 'studies', 'research', 'based', 'work', 'new', 'using', 'effect', 'effects', 'role', 'pakistan']);
+const words = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(' ')
+    .filter((w) => w.length >= 3 && !STOP.has(w))
+    .map((w) => (w.length > 4 && w.endsWith('s') ? w.slice(0, -1) : w));
+
+/** Research stories about a topic: most of the topic's words must appear, with title matches ranked first. */
+export function matchResearchNews(pool: NewsItem[], topic: string): NewsItem[] {
+  const q = [...new Set(words(topic))];
+  if (!q.length) return [];
+  const need = Math.max(1, Math.ceil(q.length * 0.6));
+  const scored: { it: NewsItem; s: number }[] = [];
+  for (const it of pool) {
+    const title = new Set(words(it.title));
+    const body = new Set(words(`${it.title} ${it.snippet ?? ''}`));
+    const hits = q.filter((w) => body.has(w)).length;
+    if (hits < need) continue;
+    scored.push({ it, s: hits + q.filter((w) => title.has(w)).length });
+  }
+  return scored.sort((a, b) => b.s - a.s || b.it.publishedAt.localeCompare(a.it.publishedAt)).map((x) => x.it);
 }

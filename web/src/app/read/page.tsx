@@ -34,9 +34,14 @@ export default async function ReaderPage({ searchParams }: { searchParams: Promi
   const paperId = one(sp.paper);
   const back = safeBack(one(sp.back)) ?? (paperId ? paperHref(paperId) : undefined);
 
-  const [info, paper] = await Promise.all([
+  const isStory = /^https:\/\/(www\.)?sciencedaily\.com\/releases\//i.test(url);
+  const [info, paper, story] = await Promise.all([
     api<ReaderInfo>(`/reader/inspect?url=${encodeURIComponent(url)}`).catch((e: Error) => ({ error: e.message })),
     paperId ? api<Paper>(`/papers/detail?id=${encodeURIComponent(paperId)}`).catch(() => null) : Promise.resolve(null),
+    // Research news: the study the story is about, so readers can open the paper itself in SciRah.
+    isStory
+      ? api<{ doi: string | null; paperId: string | null; title: string | null; venue: string | null }>(`/news/story-paper?url=${encodeURIComponent(url)}`).catch(() => null)
+      : Promise.resolve(null),
   ]);
   const title = one(sp.title) ?? ("title" in info ? info.title : undefined) ?? hostOf(url);
   const ok = !("error" in info);
@@ -67,6 +72,19 @@ export default async function ReaderPage({ searchParams }: { searchParams: Promi
           </a>
         )}
       </div>
+
+      {story?.paperId && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-primary/10 px-4 py-2 text-sm sm:px-6">
+          <span className="label text-accent">The research behind this story</span>
+          <span className="min-w-0 flex-1 truncate">
+            {story.title ?? story.doi}
+            {story.venue && <span className="text-muted"> · {story.venue}</span>}
+          </span>
+          <Link href={paperHref(story.paperId)} className="btn-primary py-1">
+            Read the paper in SciRah
+          </Link>
+        </div>
+      )}
 
       {showFrame ? (
         <iframe
@@ -106,6 +124,11 @@ export default async function ReaderPage({ searchParams }: { searchParams: Promi
               {paperId && (
                 <Link href={paperHref(paperId)} className="btn-ghost">
                   Paper details, summary & sharing
+                </Link>
+              )}
+              {!paperId && (
+                <Link href={`/search?q=${encodeURIComponent(title.replace(/\s[-–|]\s[^-–|]+$/, "").slice(0, 120))}`} className="btn-primary">
+                  Find research papers on this
                 </Link>
               )}
               <a href={finalUrl} className="btn-ghost">

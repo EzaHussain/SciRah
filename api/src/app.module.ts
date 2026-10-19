@@ -17,10 +17,11 @@ import { FeedService } from './feed/feed.service.js';
 import { NewsController } from './news/news.controller.js';
 import { NewsService } from './news/news.service.js';
 import { PapersController } from './papers/papers.controller.js';
+import { FullTextService } from './papers/fulltext.service.js';
 import { InsightsService } from './papers/insights.service.js';
 import { PapersService } from './papers/papers.service.js';
 import { ReaderController } from './reader/reader.controller.js';
-import { SubmissionsController, SubmissionsService } from './submissions/submissions.controller.js';
+import { ResearchersController, SubmissionsController, SubmissionsService } from './submissions/submissions.controller.js';
 import { VenuesController } from './venues/venues.controller.js';
 import { coreEnabled } from './papers/sources/core.js';
 
@@ -70,6 +71,7 @@ class HealthController {
     VenuesController,
     ReaderController,
     SubmissionsController,
+    ResearchersController,
   ],
   providers: [
     CacheService,
@@ -80,6 +82,7 @@ class HealthController {
     AiQuota,
     PapersService,
     InsightsService,
+    FullTextService,
     SubmissionsService,
     AuthorsService,
     BookmarksService,

@@ -62,6 +62,7 @@ interface OAWork {
     author?: { id?: string; display_name?: string; orcid?: string };
     institutions?: OAInstitution[];
     raw_affiliation_strings?: string[];
+    is_corresponding?: boolean;
   }[];
   cited_by_count?: number;
   referenced_works_count?: number;
@@ -111,6 +112,18 @@ export function mapTopics(topics: OAWork['topics']): PaperTopic[] {
   }));
 }
 
+/** Clean and de-duplicate affiliation strings (some records repeat one affiliation or join two with ";"). */
+function uniqueAffiliations(list: string[]): string[] | undefined {
+  const seen = new Map<string, string>();
+  for (const raw of list.flatMap((x) => x.split(/\s*;\s*(?=[A-Z])/))) {
+    const s = raw.replace(/\s+/g, ' ').replace(/^[\s,.;]+|[\s,;]+$/g, '').trim();
+    if (s.length < 3) continue;
+    const key = s.toLowerCase();
+    if (!seen.has(key)) seen.set(key, s);
+  }
+  return seen.size ? [...seen.values()] : undefined;
+}
+
 export function mapWork(w: OAWork): Paper | null {
   const loc = w.primary_location;
   return finalizePaper({
@@ -130,6 +143,8 @@ export function mapWork(w: OAWork): Paper | null {
         affiliation: inst?.display_name ?? a.raw_affiliation_strings?.[0],
         institutionId: short(inst?.id),
         institutionUrl: inst?.ror ?? undefined,
+        affiliations: uniqueAffiliations(a.raw_affiliation_strings?.length ? a.raw_affiliation_strings : (a.institutions ?? []).map((i) => i.display_name ?? '')),
+        corresponding: a.is_corresponding || undefined,
       };
     }),
     venue: loc?.source?.display_name,

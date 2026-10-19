@@ -144,9 +144,9 @@ export function NewsTeaser() {
 
   return (
     <section className="mb-12">
-      <SectionTitle kicker="In the news" title={current?.personalized ? "News on your topics" : "Research in the news"}>
+      <SectionTitle kicker="Research news" title={current?.personalized ? "New research on your topics" : "Latest research in the news"}>
         <Link href="/news" className="text-sm text-muted hover:text-fg">
-          All news →
+          All research news →
         </Link>
       </SectionTitle>
       <div className="grid gap-3 md:grid-cols-2">

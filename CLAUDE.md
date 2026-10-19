@@ -65,6 +65,12 @@ README.md            user-facing setup + feature list (keep in sync too)
 `PORT, WEB_ORIGIN, CONTACT_EMAIL, DATABASE_URL, DATABASE_SSL, AUTH_SECRET, SESSION_DAYS, GOOGLE_CLIENT_ID/SECRET, ORCID_CLIENT_ID/SECRET/BASE_URL (optional, not set), ADMIN_EMAILS, REDIS_URL (optional), OPENALEX_API_KEY, SEMANTIC_SCHOLAR_API_KEY, CORE_API_KEY, NCBI_API_KEY (empty), OPENAI_API_KEY, OPENAI_MODEL, OPENAI_TTS_MODEL, OPENAI_TTS_VOICE, OPENAI_IMAGE_MODEL, AI_DAILY_LIMIT, ALERTS_*`.
 Never print secret values; check them with length-only scripts. Inline `# comments` after values in .env are fine for Node but NOT for Railway's raw editor (strip them).
 
+## Presentations (claude.ai artifacts, private to the owner)
+
+- Payments guide (plain language, Pakistan + abroad): https://claude.ai/artifact/JuxySVPCDA9L4ZUyZktuPU
+- Investor pitch (funding ask PKR 1.1M–2.8M / 12 months; assumes 3 interns at PKR 10–15k, PKR 280 = $1): https://claude.ai/artifact/5yYCHdP9bVnMQnXjQp1NgE
+- Payments research (Oct 2026): Stripe/PayPal unavailable for PK businesses; Safepay accepts sole proprietors (CNIC + FBR NTN + bank maintenance certificate <3 months + authority letter); Paddle & Lemon Squeezy (≈5% + $0.50) for customers abroad — Lemon Squeezy lists Pakistan for bank payouts.
+
 ## Gotchas learned
 
 - Windows + Git Bash: complex inline `node -e` / heredoc-with-python scripts often break on quoting/backslashes. Write scripts to the scratchpad dir and run them; or use the Edit tool. Regexes inside TS template literals need `String.raw`.
@@ -72,6 +78,7 @@ Never print secret values; check them with length-only scripts. Inline `# commen
 - OpenAlex: `last_known_institutions` includes one-off collaborations → use `currentInstitutions()`; cursor paging needs an API key (use page paging); `group_by` gives counts (max 200 groups).
 - Semantic Scholar key = 1 req/s (429s) — retry wrapper in `semanticscholar.ts`.
 - Europe PMC & PMC block server PDF/image downloads; use the `pmc-oa-opendata` S3 bucket. ScienceDaily pages can be framed; Nature/ScienceAlert can't; Phys.org blocks servers.
+- OpenAI `gpt-image-1` (AI illustrations, `OPENAI_IMAGE_MODEL`) is reported to retire on 2026-10-23; switch to its successor model and update the fallback in `api/src/ai/ai.service.ts`.
 - Testing with accounts: create `t_…@example.test` users via API and delete them afterwards (`DELETE /auth/me`).
 
 ## Changelog
@@ -82,3 +89,4 @@ Never print secret values; check them with length-only scripts. Inline `# commen
 - 2026-10-16 — Deployed: GitHub → Vercel (sci-rah.vercel.app) + Railway API + Neon DB; privacy & terms pages; Google OAuth for production.
 - 2026-10-19 — Full paper in SciRah (Europe PMC/NCBI bucket/PDF); a,b,c affiliations + corresponding author; researcher/reader accounts, researcher profile + public page, "This is me" verification + admin page, verified numbers; metrics compared across OpenAlex/Semantic Scholar; research-only news (ScienceDaily) linked to papers.
 - 2026-10-19 — Single sign-in flow (one "Sign in" button; email check decides password vs create account); author current institution from own recent papers (+ department line); this CLAUDE.md created.
+- 2026-10-19 — Two presentations created (payments guide, investor pitch); see Presentations.

@@ -68,7 +68,7 @@ Never print secret values; check them with length-only scripts. Inline `# commen
 ## Presentations (claude.ai artifacts, private to the owner)
 
 - Payments guide (plain language, Pakistan + abroad): https://claude.ai/artifact/JuxySVPCDA9L4ZUyZktuPU
-- Investor pitch (funding ask PKR 1.1M–2.8M / 12 months; assumes 3 interns at PKR 10–15k, PKR 280 = $1): https://claude.ai/artifact/5yYCHdP9bVnMQnXjQp1NgE
+- Investor pitch — lean budget per owner: ask ≈ PKR 48k–63k/month (interns PKR 45–50k/month, no headcount stated; tech PKR 2.8k–12.6k: Railway Hobby ~$5, OpenAI ~$5–20, Vercel free until SciRah charges users then Pro $20 because Hobby is non-commercial only; Neon free plan; domain prepaid 3 years; no marketing/contingency): https://claude.ai/artifact/5yYCHdP9bVnMQnXjQp1NgE
 - Payments research (Oct 2026): Stripe/PayPal unavailable for PK businesses; Safepay accepts sole proprietors (CNIC + FBR NTN + bank maintenance certificate <3 months + authority letter); Paddle & Lemon Squeezy (≈5% + $0.50) for customers abroad — Lemon Squeezy lists Pakistan for bank payouts.
 
 ## Gotchas learned
@@ -90,3 +90,4 @@ Never print secret values; check them with length-only scripts. Inline `# commen
 - 2026-10-19 — Full paper in SciRah (Europe PMC/NCBI bucket/PDF); a,b,c affiliations + corresponding author; researcher/reader accounts, researcher profile + public page, "This is me" verification + admin page, verified numbers; metrics compared across OpenAlex/Semantic Scholar; research-only news (ScienceDaily) linked to papers.
 - 2026-10-19 — Single sign-in flow (one "Sign in" button; email check decides password vs create account); author current institution from own recent papers (+ department line); this CLAUDE.md created.
 - 2026-10-19 — Two presentations created (payments guide, investor pitch); see Presentations.
+- 2026-10-19 — Investor pitch budget made lean at owner's request (PKR 0.57M–0.75M / 12 months).

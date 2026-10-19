@@ -110,14 +110,10 @@ function AccountButton({ block = false }: { block?: boolean }) {
   if (!user) {
     const next = pathname && pathname !== "/login" && pathname !== "/signup" ? `?next=${encodeURIComponent(pathname)}` : "";
     return (
-      <div className={`flex gap-2 ${block ? "flex-col" : ""}`}>
-        <Link href={`/login${next}`} className={`btn-ghost ${block ? "w-full" : ""}`}>
-          Sign in
-        </Link>
-        <Link href={`/signup${next}`} className={`btn-primary ${block ? "w-full" : "hidden lg:inline-flex"}`}>
-          Create account
-        </Link>
-      </div>
+      // One entry point: the sign-in page works out whether the visitor is new or returning.
+      <Link href={`/login${next}`} className={`btn-primary ${block ? "w-full" : ""}`}>
+        Sign in
+      </Link>
     );
   }
 

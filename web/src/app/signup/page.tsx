@@ -1,13 +1,8 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { AuthForm } from "@/components/AuthForm";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Create account" };
-
-export default function SignupPage() {
-  return (
-    <Suspense>
-      <AuthForm mode="signup" />
-    </Suspense>
-  );
+/** Sign-up and sign-in are one page now; keep old /signup links working. */
+export default async function SignupPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const next = typeof sp.next === "string" ? `?next=${encodeURIComponent(sp.next)}` : "";
+  redirect(`/login${next}`);
 }

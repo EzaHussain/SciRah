@@ -218,11 +218,52 @@ export async function getWork(id: string): Promise<Paper | null> {
   return w ? mapWork(w) : null;
 }
 
+/**
+ * OpenAlex's "last known institutions" includes any institution on the author's single most recent
+ * paper (e.g. a one-off collaboration). Prefer the one with the longest affiliation history.
+ */
+function mainKnownInstitution(a: OAAuthor): OAInstitution | undefined {
+  const years = new Map((a.affiliations ?? []).map((af) => [af.institution.id, af.years.length]));
+  return [...(a.last_known_institutions ?? [])].sort((x, y) => (years.get(y.id) ?? 0) - (years.get(x.id) ?? 0))[0];
+}
+
+/**
+ * The author's current institution(s), from their OWN affiliation on their most recent papers (not
+ * their co-authors'): an institution counts only if it appears on a real share of those papers.
+ */
+function currentInstitutions(authorId: string, recent: OAWork[]): { institutions: OAInstitution[]; department?: string } {
+  const counts = new Map<string, { inst: OAInstitution; n: number }>();
+  const raw = new Map<string, number>();
+  let withAffiliation = 0;
+  for (const w of recent) {
+    const me = w.authorships?.find((x) => short(x.author?.id) === authorId);
+    const insts = (me?.institutions ?? []).filter((i) => i.id);
+    if (!insts.length) continue;
+    withAffiliation++;
+    for (const i of insts) {
+      const e = counts.get(i.id!) ?? { inst: i, n: 0 };
+      e.n++;
+      counts.set(i.id!, e);
+    }
+    for (const r of me?.raw_affiliation_strings ?? []) raw.set(r.trim(), (raw.get(r.trim()) ?? 0) + 1);
+  }
+  if (!withAffiliation) return { institutions: [] };
+  const sorted = [...counts.values()].sort((x, y) => y.n - x.n);
+  const threshold = Math.max(2, Math.ceil(withAffiliation * 0.25));
+  const kept = sorted.filter((e, i) => i === 0 || e.n >= threshold).map((e) => e.inst);
+  // The most common way the author writes their affiliation (department / campus), for the top institution.
+  const topName = kept[0]?.display_name?.toLowerCase() ?? '';
+  const department = [...raw.entries()]
+    .filter(([r]) => !topName || r.toLowerCase().includes(topName.split(' ')[0]))
+    .sort((x, y) => y[1] - x[1])[0]?.[0];
+  return { institutions: kept, department: department && department.length <= 220 ? department : undefined };
+}
+
 function mapAuthorSummary(a: OAAuthor): AuthorSummary {
   return {
     id: `openalex:${short(a.id)}`,
     name: a.display_name,
-    affiliation: a.last_known_institutions?.[0]?.display_name,
+    affiliation: mainKnownInstitution(a)?.display_name,
     worksCount: a.works_count,
     citationCount: a.cited_by_count,
     hIndex: a.summary_stats?.h_index,
@@ -289,10 +330,22 @@ export async function getAuthor(authorId: string): Promise<AuthorProfile | null>
   });
   if (!a) return null;
 
-  const works = await fetchJson<OAList<OAWork>>(
-    url('/works', { filter: `author.id:${authorId}`, sort: 'cited_by_count:desc', per_page: 50, select: WORK_FIELDS }),
-  );
+  const today = new Date().toISOString().slice(0, 10);
+  const [works, recent] = await Promise.all([
+    fetchJson<OAList<OAWork>>(url('/works', { filter: `author.id:${authorId}`, sort: 'cited_by_count:desc', per_page: 50, select: WORK_FIELDS })),
+    fetchJson<OAList<OAWork>>(
+      url('/works', {
+        filter: `author.id:${authorId},to_publication_date:${today}`,
+        sort: 'publication_date:desc',
+        per_page: 25,
+        select: 'id,publication_date,authorships',
+      }),
+    ).catch(() => ({ meta: { count: 0 }, results: [] as OAWork[] })),
+  ]);
   const papers = works.results.map(mapWork).filter((x): x is Paper => !!x);
+  const current = currentInstitutions(authorId, recent.results);
+  const fallback = mainKnownInstitution(a);
+  const institutionsNow = current.institutions.length ? current.institutions : fallback ? [fallback] : [];
 
   // Co-authors: count how often each other author appears on this author's top works.
   const co = new Map<string, { id?: string; name: string; count: number; affiliation?: string }>();
@@ -311,7 +364,9 @@ export async function getAuthor(authorId: string): Promise<AuthorProfile | null>
   return {
     ...mapAuthorSummary(a),
     i10Index: a.summary_stats?.i10_index,
-    institutions: (a.last_known_institutions ?? []).map((i) => ({
+    affiliation: institutionsNow[0]?.display_name,
+    department: current.department,
+    institutions: institutionsNow.map((i) => ({
       id: short(i.id),
       name: i.display_name ?? 'Unknown institution',
       countryCode: i.country_code,

@@ -65,6 +65,7 @@ export default async function AuthorPage({
                   ) : (
                     <span>{inst.name}</span>
                   )}
+          {a.department && <p className="mt-1.5 max-w-2xl text-sm text-muted">{a.department}</p>}
                   {inst.countryCode && <span className="tag">{inst.countryCode}</span>}
                 </li>
               ))}

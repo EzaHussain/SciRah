@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Sign in" };
 export default function LoginPage() {
   return (
     <Suspense>
-      <AuthForm mode="login" />
+      <AuthForm />
     </Suspense>
   );
 }

@@ -68,7 +68,7 @@ Never print secret values; check them with length-only scripts. Inline `# commen
 ## Presentations (claude.ai artifacts, private to the owner)
 
 - Payments guide (plain language, Pakistan + abroad): https://claude.ai/artifact/JuxySVPCDA9L4ZUyZktuPU
-- Investor pitch — lean budget per owner: ask ≈ PKR 48k–63k/month (interns PKR 45–50k/month, no headcount stated; tech PKR 2.8k–12.6k: Railway Hobby ~$5, OpenAI ~$5–20, Vercel free until SciRah charges users then Pro $20 because Hobby is non-commercial only; Neon free plan; domain prepaid 3 years; no marketing/contingency): https://claude.ai/artifact/5yYCHdP9bVnMQnXjQp1NgE
+- Investor pitch — professional 13-slide version (owner wants formal tone; mention team costs only as a 'Product team' line, never 'interns'): ask PKR 750,000 / 12 months = product team PKR 600k (50k/month) + infrastructure PKR 150k (Railway ~$5, OpenAI ~$5–20, Vercel free until paid plans then $20, Neon free, domain prepaid 3 yrs). Market: ~1.96M university students (2024–25 est.), 262 universities (QAA 2025), 81,852 Pakistani-authored articles in 2025 vs 48,196 in 2021 (OpenAlex): https://claude.ai/artifact/5yYCHdP9bVnMQnXjQp1NgE
 - Payments research (Oct 2026): Stripe/PayPal unavailable for PK businesses; Safepay accepts sole proprietors (CNIC + FBR NTN + bank maintenance certificate <3 months + authority letter); Paddle & Lemon Squeezy (≈5% + $0.50) for customers abroad — Lemon Squeezy lists Pakistan for bank payouts.
 
 ## Gotchas learned
@@ -91,3 +91,4 @@ Never print secret values; check them with length-only scripts. Inline `# commen
 - 2026-10-19 — Single sign-in flow (one "Sign in" button; email check decides password vs create account); author current institution from own recent papers (+ department line); this CLAUDE.md created.
 - 2026-10-19 — Two presentations created (payments guide, investor pitch); see Presentations.
 - 2026-10-19 — Investor pitch budget made lean at owner's request (PKR 0.57M–0.75M / 12 months).
+- 2026-10-19 — Investor pitch rebuilt professionally (exec summary, market, competition, model, GTM, cost structure, use of funds, roadmap).

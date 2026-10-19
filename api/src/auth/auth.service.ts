@@ -158,6 +158,21 @@ export class AuthService {
     if (n > max) throw new HttpException('Too many attempts. Please wait a few minutes and try again.', HttpStatus.TOO_MANY_REQUESTS);
   }
 
+  /**
+   * Single sign-in screen: does this email already have an account, and how does it sign in?
+   * Rate-limited per IP so it can't be used to test lists of emails.
+   */
+  async checkEmail(input: { email?: unknown }, ip: string) {
+    const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
+    if (!EMAIL_RE.test(email) || email.length > 254) throw new BadRequestException('Please enter a valid email address');
+    await this.throttle(`check:${ip}`, 30, 900);
+    const row = await this.db.one<{ password_hash: string | null; google_sub: string | null }>(
+      'select password_hash, google_sub from users where lower(email) = $1',
+      [email],
+    );
+    return { exists: !!row, password: !!row?.password_hash, google: !!row?.google_sub };
+  }
+
   async signup(input: { email?: unknown; password?: unknown; name?: unknown; role?: unknown }, ip: string) {
     const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
     const password = typeof input.password === 'string' ? input.password : '';

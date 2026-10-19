@@ -169,6 +169,8 @@ export interface Institution {
 
 export interface AuthorProfile extends AuthorSummary {
   i10Index?: number;
+  /** How the author most often writes their affiliation on recent papers (department / campus). */
+  department?: string;
   institutions: Institution[];
   pastAffiliations: { name: string; years: number[]; url?: string }[];
   homepage?: string;

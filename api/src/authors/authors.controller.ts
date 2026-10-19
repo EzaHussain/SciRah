@@ -79,7 +79,7 @@ export class AuthorsService {
   async get(id: string): Promise<AuthorProfile> {
     const m = id.match(/^(openalex:A\d+|s2:\d+)$/i);
     if (!m) throw new BadRequestException('Unrecognised author id');
-    const profile = await this.cache.wrap(`author:v1:${id}`, 12 * 3600, async () => {
+    const profile = await this.cache.wrap(`author:v2:${id}`, 12 * 3600, async () => {
       const [kind, value] = id.split(':');
       return kind.toLowerCase() === 'openalex' ? openalex.getAuthor(value.toUpperCase()) : s2.getAuthor(value);
     });

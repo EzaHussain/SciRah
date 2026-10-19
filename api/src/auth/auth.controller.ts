@@ -14,6 +14,12 @@ export class AuthController {
     return { email: true, google: this.auth.googleEnabled };
   }
 
+  @Post('check-email')
+  @HttpCode(200)
+  checkEmail(@Body() body: Json, @ClientIp() ip: string) {
+    return this.auth.checkEmail(body ?? {}, ip);
+  }
+
   @Post('signup')
   signup(@Body() body: Json, @ClientIp() ip: string) {
     return this.auth.signup(body ?? {}, ip);

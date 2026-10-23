@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 import { api, authorHref, paperHref } from "@/lib/api";
 import type { SearchMode } from "@/lib/types";
 import { PaperIcon, SearchIcon } from "./icons";
@@ -152,8 +152,13 @@ export function SearchBar({ size = "md", autoFocus = false, only }: { size?: "md
       {showList && (
         <ul id={listId} role="listbox" className="popover absolute inset-x-0 top-full z-30 mt-1.5 max-h-96 overflow-auto rounded-2xl border border-line p-1.5 text-left shadow-lg">
           {items.map((s, i) => (
+            <Fragment key={s.id}>
+            {s.kind && s.kind !== items[i - 1]?.kind && (
+              <li role="presentation" className="label px-3 pt-2 pb-1 text-[10px] text-muted">
+                {s.kind === "paper" ? "Related papers" : "Search for"}
+              </li>
+            )}
             <li
-              key={s.id}
               id={`${listId}-${i}`}
               role="option"
               aria-selected={i === active}
@@ -183,6 +188,7 @@ export function SearchBar({ size = "md", autoFocus = false, only }: { size?: "md
                 </span>
               )}
             </li>
+            </Fragment>
           ))}
         </ul>
       )}

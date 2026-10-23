@@ -290,9 +290,13 @@ export interface AuthorMetricsSet {
 export interface AuthorClaim {
   /** ORCID sign-in is configured on the server. */
   claimable: boolean;
+  /** University-email codes can be sent. */
+  emailCodes: boolean;
+  /** The university email domain the researcher verified with (e.g. comsats.edu.pk). */
+  verifiedEmailDomain: string | null;
   claimed: boolean;
   mine: boolean;
-  method: "orcid" | "admin" | null;
+  method: "orcid" | "admin" | "email" | null;
   requestPending?: boolean;
   patents: number;
   students: number;
@@ -362,4 +366,39 @@ export interface ReaderInfo {
   embeddable: boolean;
   title?: string;
   reason?: string;
+}
+
+// ---- Browse pages (Authors, Pakistan, Topics, Journals) ----
+
+export interface TopAuthor {
+  id: string;
+  name: string;
+  institution?: string;
+  works?: number;
+  citations?: number;
+  hIndex?: number;
+}
+
+export interface CountryOverview {
+  worksByYear: { year: number; count: number }[];
+  institutions: { id: string; name: string; city?: string; works: number }[];
+  institutionCount: number;
+  fields: { id: string; name: string; count: number }[];
+  journals: { id: string; name: string; count: number }[];
+}
+
+export interface FieldInfo {
+  id: string;
+  name: string;
+  domain: string;
+  works: number;
+  subfields: { id: string; name: string }[];
+}
+
+export interface VenueSuggestion {
+  id: string;
+  name: string;
+  hint?: string;
+  works?: number;
+  kind: "journal" | "publisher";
 }

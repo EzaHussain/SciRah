@@ -12,8 +12,19 @@ import { ThemeToggle } from "./ThemeToggle";
 const NAV = [
   { href: "/", label: "Home" },
   { href: "/search", label: "Search" },
+  { href: "/authors", label: "Authors" },
+  { href: "/pakistan", label: "Pakistan" },
   { href: "/news", label: "News" },
   { href: "/saved", label: "Saved" },
+];
+
+/** Less-used pages, under "More" on desktop. */
+const MORE = [
+  { href: "/topics", label: "Topics", hint: "Browse research by field" },
+  { href: "/journals", label: "Journals", hint: "Journals and publishers" },
+  { href: "/submit", label: "Add a paper", hint: "For researchers" },
+  { href: "/score", label: "SciRah Score", hint: "How researchers are scored" },
+  { href: "/about", label: "About", hint: "What SciRah is" },
 ];
 
 export function Header() {
@@ -36,7 +47,7 @@ export function Header() {
           <Wordmark />
         </Link>
 
-        <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label="Main">
+        <nav className="ml-4 hidden items-center gap-0.5 lg:flex" aria-label="Main">
           {NAV.map((n) => (
             <Link
               key={n.href}
@@ -48,17 +59,18 @@ export function Header() {
               {n.label}
             </Link>
           ))}
+          <MoreMenu active={MORE.some((m) => isActive(m.href))} />
         </nav>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
           <NotificationBell />
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <AccountButton />
           </div>
           <button
             type="button"
-            className="btn-ghost px-2.5 md:hidden"
+            className="btn-ghost px-2.5 lg:hidden"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
@@ -69,9 +81,9 @@ export function Header() {
       </div>
 
       {open && (
-        <div className="border-t border-line bg-bg px-4 pt-2 pb-4 md:hidden">
-          <nav className="flex flex-col" aria-label="Mobile">
-            {NAV.map((n) => (
+        <div className="border-t border-line bg-bg px-4 pt-2 pb-4 lg:hidden">
+          <nav className="grid grid-cols-2 gap-x-2" aria-label="Mobile">
+            {[...NAV, ...MORE].map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
@@ -87,6 +99,55 @@ export function Header() {
         </div>
       )}
     </header>
+  );
+}
+
+function MoreMenu({ active }: { active: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const [path, setPath] = useState(pathname);
+  if (path !== pathname) {
+    setPath(pathname);
+    setOpen(false);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm transition-colors ${active ? "bg-subtle font-medium text-fg" : "text-muted hover:text-fg"}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        More
+        <svg viewBox="0 0 20 20" className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true">
+          <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div role="menu" className="popover absolute left-0 mt-2 w-60 p-1.5 shadow-lg">
+          {MORE.map((m) => (
+            <Link key={m.href} role="menuitem" href={m.href} className="block rounded-lg px-3 py-2 hover:bg-subtle" onClick={() => setOpen(false)}>
+              <span className="block text-sm">{m.label}</span>
+              <span className="block text-xs text-muted">{m.hint}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -137,6 +198,11 @@ function AccountButton({ block = false }: { block?: boolean }) {
           <Link href="/account" className="btn-ghost">
             Account
           </Link>
+          {user.isAdmin && (
+            <Link href="/admin/users" className="btn-ghost">
+              Admin
+            </Link>
+          )}
           <button className="btn-ghost" onClick={doSignOut}>
             Sign out
           </button>
@@ -168,6 +234,11 @@ function AccountButton({ block = false }: { block?: boolean }) {
           <Link role="menuitem" href="/submit" className="block rounded-lg px-3 py-2 text-sm hover:bg-subtle" onClick={() => setMenu(false)}>
             Add a paper
           </Link>
+          {user.isAdmin && (
+            <Link role="menuitem" href="/admin/users" className="block rounded-lg px-3 py-2 text-sm hover:bg-subtle" onClick={() => setMenu(false)}>
+              All users
+            </Link>
+          )}
           {user.isAdmin && (
             <Link role="menuitem" href="/admin/submissions" className="block rounded-lg px-3 py-2 text-sm hover:bg-subtle" onClick={() => setMenu(false)}>
               Review added papers

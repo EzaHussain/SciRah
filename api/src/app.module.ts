@@ -1,4 +1,5 @@
 import { Controller, Get, Module } from '@nestjs/common';
+import { AdminController } from './admin/admin.controller.js';
 import { AiController } from './ai/ai.controller.js';
 import { AiService } from './ai/ai.service.js';
 import { AlertsController, NotificationsController } from './alerts/alerts.controller.js';
@@ -12,6 +13,7 @@ import { AiQuota, AuthGuard, OptionalAuthGuard } from './common/auth.js';
 import { CacheService } from './common/cache.service.js';
 import { DbService } from './common/db.service.js';
 import { config } from './config.js';
+import { ExploreController } from './explore/explore.controller.js';
 import { FeedController } from './feed/feed.controller.js';
 import { FeedService } from './feed/feed.service.js';
 import { NewsController } from './news/news.controller.js';
@@ -24,6 +26,7 @@ import { ReaderController } from './reader/reader.controller.js';
 import { ResearchersController, SubmissionsController, SubmissionsService } from './submissions/submissions.controller.js';
 import { VenuesController } from './venues/venues.controller.js';
 import { coreEnabled } from './papers/sources/core.js';
+import { mailEnabled } from './common/mail.js';
 
 @Controller('health')
 class HealthController {
@@ -49,6 +52,7 @@ class HealthController {
         alerts: this.db.enabled && config.alertsEnabled,
         aiGraphics: !!config.openaiApiKey,
         orcidClaims: !!(config.orcidClientId && config.orcidClientSecret),
+        universityEmailCodes: mailEnabled(),
         news: true,
       },
     };
@@ -72,6 +76,8 @@ class HealthController {
     ReaderController,
     SubmissionsController,
     ResearchersController,
+    ExploreController,
+    AdminController,
   ],
   providers: [
     CacheService,

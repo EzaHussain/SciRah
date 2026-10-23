@@ -12,7 +12,7 @@ const COMPONENTS = [
   { label: "h-index", weight: 20, value: "h-index", k: 25, note: "h papers with at least h citations each." },
   { label: "Publications", weight: 15, value: "total number of works", k: 150, note: "Steady output counts, with diminishing returns." },
   { label: "Research funding", weight: 10, value: "distinct grants acknowledged in the papers", k: 10, note: "From the funding acknowledgements recorded by OpenAlex." },
-  { label: "Patents", weight: 10, value: "patents granted", k: 5, note: "Self-reported by the researcher on an ORCID-verified profile." },
+  { label: "Patents", weight: 10, value: "patents granted", k: 5, note: "Self-reported by the researcher on a verified profile." },
   { label: "Graduated students", weight: 5, value: "MPhil / PhD students supervised to graduation", k: 10, note: "Self-reported on a verified profile; lower weight." },
 ];
 

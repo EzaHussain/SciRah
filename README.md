@@ -25,7 +25,10 @@ api/   NestJS API — PostgreSQL, accounts (email + Google), sources, AI, feeds,
 - **Read the full paper in SciRah** for open-access papers: the complete article from Europe PMC (figures from NCBI's public PMC bucket), otherwise a verified free PDF, otherwise the open-access page. Subscription-only papers say so.
 - **Affiliations as printed on the paper** (authors with a, b, c superscripts, affiliations listed below, ✉ corresponding author).
 - **Researcher and reader accounts**: sign-up asks which. Researchers get a public page (`/researcher/<id>`), add their papers, and verify their publication profile (ORCID, or a "This is me" request reviewed by an admin at `/admin/verifications`). Verified researchers can enter their own numbers (e.g. from Google Scholar), patents and students.
-- **Researcher numbers from several sources**: OpenAlex and Semantic Scholar (matched through the researcher's papers) side by side, plus the verified researcher's own numbers.
+- **Researcher numbers from several sources**: a paper-by-paper cross-check of OpenAlex, Crossref and Semantic Scholar, each source side by side, plus the verified researcher's own numbers.
+- **Verify with a university email**: researchers get a 6-digit code at their university address; an address at the profile's own university verifies them instantly. Verified researchers can correct their numbers and remove papers that aren't theirs ("Not my paper").
+- **Browse pages**: Authors (find a researcher + Pakistan's most-cited researchers), Pakistan (papers per year, leading institutions, fields, journals), Topics (all fields and subfields), Journals (journal/publisher search + where Pakistani researchers publish), About.
+- **Admin**: `/admin/users` lists every account with totals; `/admin/submissions` and `/admin/verifications` for reviews.
 - **Research news** (ScienceDaily: stories about newly published studies), each linked to the paper it reports on; general press coverage only as a separate section of the News page.
 - Saved papers, personalised "For you" feed, trending papers, comments, researcher profiles.
 
@@ -75,6 +78,9 @@ Lets researchers verify their profile so they can add patents and graduated stud
 1. Sign in at **orcid.org** → your name → **Developer tools** → register a free *Public API* client.
 2. Redirect URI: `http://localhost:3000/auth/orcid/callback` (+ your production URL).
 3. Put the Client ID / secret in `api/.env` as `ORCID_CLIENT_ID` / `ORCID_CLIENT_SECRET` and restart the API.
+
+### 4b. University-email codes (optional, free)
+Researchers verify their profile with a code sent to their university email. Create a free account at **resend.com**, verify your domain (DNS records at your registrar), create an API key, and set `RESEND_API_KEY` and `MAIL_FROM` (e.g. `SciRah <verify@yourdomain.com>`) in `api/.env`. For local testing without email, start the API with `MAIL_DEV_LOG=1` and the code is printed to the log.
 
 ### 5. Admins
 Set `ADMIN_EMAILS` in `api/.env` (comma-separated). Those accounts see **Review added papers** in their account menu, and their own added papers are approved straight away.

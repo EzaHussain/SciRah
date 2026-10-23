@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, readerHref } from "@/lib/api";
 import type { AuthorMetrics, AuthorMetricsSet } from "@/lib/types";
+import { PAPERS_CHANGED } from "./AuthorPapers";
 
 const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "—" : new Intl.NumberFormat("en").format(n));
 const compact = (n: number | null | undefined) =>
@@ -27,11 +28,16 @@ export function AuthorMetricsPanel({ authorId, initial }: { authorId: string; in
 
   useEffect(() => {
     let cancelled = false;
-    api<AuthorMetrics>(`/authors/${encodeURIComponent(authorId)}/metrics`)
-      .then((r) => !cancelled && setM(r))
-      .catch(() => undefined);
+    const load = () =>
+      api<AuthorMetrics>(`/authors/${encodeURIComponent(authorId)}/metrics`)
+        .then((r) => !cancelled && setM(r))
+        .catch(() => undefined);
+    load();
+    // The verified researcher removed or restored a paper: numbers change.
+    window.addEventListener(PAPERS_CHANGED, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(PAPERS_CHANGED, load);
     };
   }, [authorId]);
 

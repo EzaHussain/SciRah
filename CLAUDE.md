@@ -89,6 +89,7 @@ Never print secret values; check them with length-only scripts. Inline `# commen
 - Europe PMC & PMC block server PDF/image downloads; use the `pmc-oa-opendata` S3 bucket. ScienceDaily pages can be framed; Nature/ScienceAlert can't; Phys.org blocks servers.
 - OpenAI `gpt-image-1` (AI illustrations, `OPENAI_IMAGE_MODEL`) is reported to retire on 2026-10-23; switch to its successor model and update the fallback in `api/src/ai/ai.service.ts`.
 - Testing with accounts: create `t_…@example.test` users via API and delete them afterwards (`DELETE /auth/me`). For university-email tests run the API with `MAIL_DEV_LOG=1` and read the code from the log.
+- robots.txt rules are **prefix matches** for Google: `Disallow: /auth` also blocked `/authors` and `/author/…` (fixed 2026-10-23). Always end rules with `/` (folder) or `$` (exact page).
 - Admin "see all users": `/admin/users` on the site (no need to open Neon).
 
 ## Changelog
@@ -109,3 +110,4 @@ Never print secret values; check them with length-only scripts. Inline `# commen
 - 2026-10-23 — SEO: sitemap.xml, robots.txt, canonical URLs, ScholarlyArticle structured data, richer site metadata; proxy redirect vercel.app → custom domain when `NEXT_PUBLIC_SITE_URL` is set. Email back to Resend only (Nodemailer removed). Owner connecting scirah.com via Namecheap.
 - 2026-10-23 — Keyword suggestions fixed: related papers (year · journal, no author names) + search phrases, labelled groups.
 - 2026-10-23 — scirah.com live on Vercel (Namecheap DNS), Search Console verified; proxy also redirects www → scirah.com. Pending owner: `NEXT_PUBLIC_SITE_URL` on Vercel + redeploy, Resend variables on Railway, Google OAuth origins for scirah.com, submit sitemap.
+- 2026-10-23 — robots.txt fix: author pages were blocked by the `/auth` prefix rule; all rules now end in `/` or `$`.

@@ -2,9 +2,9 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useState } from "react";
-import { api, authorHref } from "@/lib/api";
+import { api, authorHref, paperHref } from "@/lib/api";
 import type { SearchMode } from "@/lib/types";
-import { SearchIcon } from "./icons";
+import { PaperIcon, SearchIcon } from "./icons";
 
 interface Suggestion {
   id: string;
@@ -12,6 +12,7 @@ interface Suggestion {
   hint?: string;
   works?: number;
   citations?: number;
+  kind?: "query" | "paper";
 }
 
 const MODES: { value: SearchMode; label: string; placeholder: string }[] = [
@@ -33,7 +34,7 @@ export function SearchBar({ size = "md", autoFocus = false, only }: { size?: "md
   const [suggestions, setSuggestions] = useState<{ key: string; items: Suggestion[] } | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const suggestKind = mode === "author" ? "authors" : mode === "subject" ? "subjects" : null;
+  const suggestKind = mode === "author" ? "authors" : mode === "subject" ? "subjects" : "keywords";
   const term = q.trim();
   const suggestKey = `${suggestKind}:${term.toLowerCase()}`;
   const items = suggestKind && term.length >= 2 && suggestions?.key === suggestKey ? suggestions.items : [];
@@ -65,8 +66,9 @@ export function SearchBar({ size = "md", autoFocus = false, only }: { size?: "md
   const pick = (s: Suggestion) => {
     setQ(s.name);
     setOpen(false);
-    // An author suggestion is one specific person, so open their profile; a subject runs a subject search.
+    // An author is one specific person and a paper title one specific paper: open them. Anything else searches.
     if (mode === "author") router.push(authorHref(`openalex:${s.id}`));
+    else if (s.kind === "paper") router.push(paperHref(`openalex:${s.id}`));
     else go(s.name, mode);
   };
 
@@ -160,11 +162,21 @@ export function SearchBar({ size = "md", autoFocus = false, only }: { size?: "md
               onMouseEnter={() => setActive(i)}
               className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2 ${i === active ? "bg-subtle" : ""}`}
             >
-              <span className="min-w-0">
-                <span className="block truncate font-medium text-fg">{s.name}</span>
+              <span className="flex min-w-0 items-center gap-2.5">
+                {s.kind && (
+                  <span className="shrink-0 text-muted" aria-hidden="true">
+                    {s.kind === "paper" ? <PaperIcon className="h-3.5 w-3.5" /> : <SearchIcon className="h-3.5 w-3.5" />}
+                  </span>
+                )}
+                <span className="min-w-0">
+                <span className={`block truncate text-fg ${s.kind === "paper" ? "text-sm" : "font-medium"}`}>{s.name}</span>
                 {s.hint && <span className="block truncate text-xs text-muted">{s.hint}</span>}
+                </span>
               </span>
-              {s.works != null && (
+              {s.kind === "paper" && s.citations != null && (
+                <span className="shrink-0 font-mono text-[11px] text-muted">{s.citations.toLocaleString()} citations</span>
+              )}
+              {s.kind !== "paper" && s.works != null && (
                 <span className="shrink-0 text-right font-mono text-[11px] text-muted">
                   {s.works.toLocaleString()} works
                   {mode === "author" && s.citations != null && <span className="block">{s.citations.toLocaleString()} citations</span>}

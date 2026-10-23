@@ -80,7 +80,7 @@ Lets researchers verify their profile so they can add patents and graduated stud
 3. Put the Client ID / secret in `api/.env` as `ORCID_CLIENT_ID` / `ORCID_CLIENT_SECRET` and restart the API.
 
 ### 4b. University-email codes (optional, free)
-Researchers verify their profile with a code sent to their university email. Create a free account at **resend.com**, verify your domain (DNS records at your registrar), create an API key, and set `RESEND_API_KEY` and `MAIL_FROM` (e.g. `SciRah <verify@yourdomain.com>`) in `api/.env`. For local testing without email, start the API with `MAIL_DEV_LOG=1` and the code is printed to the log.
+Researchers verify their profile with a code sent to their university email. Emails are sent with **Nodemailer** over SMTP: set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` in `api/.env` (Gmail: `smtp.gmail.com`, port `465`, and a Google *app password*). Some hosts block SMTP (Railway's Free/Hobby plans); there you can set `RESEND_API_KEY` (resend.com) instead. For local testing without email, start the API with `MAIL_DEV_LOG=1` and the code is printed to the log.
 
 ### 5. Admins
 Set `ADMIN_EMAILS` in `api/.env` (comma-separated). Those accounts see **Review added papers** in their account menu, and their own added papers are approved straight away.

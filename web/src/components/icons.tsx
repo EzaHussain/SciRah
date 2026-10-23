@@ -89,6 +89,12 @@ export const NewsIcon = ({ className = "h-4 w-4" }: P) => (
     <path d="M7.5 9h6M7.5 12.5h6M7.5 16h4" />
   </svg>
 );
+export const PaperIcon = ({ className = "h-4 w-4" }: P) => (
+  <svg {...base} className={className}>
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+    <path d="M14 3v5h5M9 13h6M9 17h4" />
+  </svg>
+);
 export const CheckIcon = ({ className = "h-4 w-4" }: P) => (
   <svg {...base} className={className}>
     <path d="M5 12.5 10 17 19 7.5" />

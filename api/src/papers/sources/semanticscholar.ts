@@ -235,3 +235,22 @@ export async function authorMetricsByDois(name: string, dois: string[]): Promise
     url: a.url ?? `https://www.semanticscholar.org/author/${a.authorId}`,
   };
 }
+
+/** Semantic Scholar's citation count for each DOI (batch lookup, 500 per request). */
+export async function citationsByDois(dois: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  for (let i = 0; i < dois.length; i += 500) {
+    const chunk = dois.slice(i, i + 500);
+    const rows = await fetchJson<({ citationCount?: number } | null)[]>(`${BASE}/paper/batch?fields=citationCount`, {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: chunk.map((d) => `DOI:${d}`) }),
+      timeoutMs: 20_000,
+    });
+    chunk.forEach((d, j) => {
+      const c = rows[j]?.citationCount;
+      if (typeof c === 'number') out.set(d, c);
+    });
+  }
+  return out;
+}

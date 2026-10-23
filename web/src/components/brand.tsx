@@ -1,8 +1,8 @@
 import Image from "next/image";
 
-/** The original SciRah logo image, unmodified (header, footer and sign-in screens). */
+/** The SciRah logo with its dark background removed (header, footer and sign-in screens). */
 export function HeaderLogo({ className = "h-11 w-11", priority = false }: { className?: string; priority?: boolean }) {
-  return <Image src="/logo.png" alt="SciRah" width={1254} height={1254} className={`shrink-0 ${className}`} priority={priority} />;
+  return <Image src="/logo-transparent.png" alt="SciRah" width={192} height={192} unoptimized className={`shrink-0 ${className}`} priority={priority} />;
 }
 
 /**

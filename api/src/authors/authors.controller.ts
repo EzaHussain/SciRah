@@ -21,6 +21,7 @@ import { AuthGuard, CurrentUser, OptionalAuthGuard, type AuthUser } from '../com
 import { CacheService } from '../common/cache.service.js';
 import { DbService } from '../common/db.service.js';
 import { config } from '../config.js';
+import * as crossref from '../papers/sources/crossref.js';
 import * as openalex from '../papers/sources/openalex.js';
 import * as s2 from '../papers/sources/semanticscholar.js';
 import type { AuthorProfile, AuthorSummary } from '../papers/types.js';
@@ -68,6 +69,11 @@ export class AuthorsService {
     private readonly cache: CacheService,
     private readonly db: DbService,
   ) {}
+
+  /** Type-ahead suggestions for the search box (author names or subjects). */
+  suggest(kind: 'authors' | 'subjects', q: string) {
+    return this.cache.wrap(`suggest:v2:${kind}:${q.toLowerCase()}`, 24 * 3600, () => openalex.autocomplete(kind, q));
+  }
 
   search(q: string): Promise<AuthorSummary[]> {
     return this.cache.wrap(`authors:search:${q.toLowerCase()}`, 6 * 3600, async () => {
@@ -124,10 +130,13 @@ export class AuthorsService {
     const profile = await this.get(authorId);
     const dois = profile.papers.map((p) => p.ids.doi).filter((d): d is string => !!d);
     const sem = await this.cache.wrap(`metrics:s2:v1:${authorId}`, 24 * 3600, () => s2.authorMetricsByDois(profile.name, dois).catch(() => null));
+    const checked = await this.cache.wrap(`metrics:checked:v1:${authorId}`, 24 * 3600, () => this.crossChecked(authorId).catch(() => null));
     const claim = await this.claimRow(authorId);
     const hasVerified = claim && [claim.citations, claim.h_index, claim.i10_index, claim.works].some((v) => v !== null);
     return {
       openalex: { works: profile.worksCount ?? null, citations: profile.citationCount ?? null, hIndex: profile.hIndex ?? null, i10Index: profile.i10Index ?? null },
+      crossref: checked?.crossref ?? null,
+      combined: checked?.combined ?? null,
       semanticScholar: sem
         ? { works: sem.paperCount ?? null, citations: sem.citationCount ?? null, hIndex: sem.hIndex ?? null, i10Index: null, url: sem.url }
         : null,
@@ -142,6 +151,26 @@ export class AuthorsService {
             updatedAt: claim.metrics_updated_at,
           }
         : null,
+    };
+  }
+
+  /**
+   * Cross-check an author's citations paper by paper: for every work in their OpenAlex profile, look up the
+   * same DOI in Crossref and Semantic Scholar, keep the highest count any of them reports, and recompute
+   * total citations, h-index and i10-index from that. Also returns Crossref's own figures.
+   */
+  private async crossChecked(authorId: string) {
+    const works = await openalex.authorWorkCitations(authorId.split(':')[1]);
+    const dois = [...new Set(works.map((w) => w.doi).filter((d): d is string => !!d))];
+    const [cr, ss] = await Promise.all([
+      crossref.citationsByDois(dois).catch(() => new Map<string, number>()),
+      s2.citationsByDois(dois).catch(() => new Map<string, number>()),
+    ]);
+    const best = works.map((w) => Math.max(w.citations, w.doi ? (cr.get(w.doi) ?? 0) : 0, w.doi ? (ss.get(w.doi) ?? 0) : 0));
+    const crCounts = dois.filter((d) => cr.has(d)).map((d) => cr.get(d)!);
+    return {
+      combined: { ...citationStats(best), works: works.length },
+      crossref: crCounts.length ? { ...citationStats(crCounts), works: crCounts.length } : null,
     };
   }
 
@@ -382,6 +411,14 @@ export class AuthorsService {
   }
 }
 
+/** Total citations, h-index and i10-index from a list of per-paper citation counts. */
+function citationStats(counts: number[]) {
+  const sorted = [...counts].sort((a, b) => b - a);
+  let h = 0;
+  while (h < sorted.length && sorted[h] >= h + 1) h++;
+  return { citations: sorted.reduce((a, b) => a + b, 0), hIndex: h, i10Index: sorted.filter((c) => c >= 10).length };
+}
+
 @Controller('authors')
 export class AuthorsController {
   constructor(private readonly authors: AuthorsService) {}
@@ -391,6 +428,14 @@ export class AuthorsController {
     const query = (q ?? '').trim();
     if (query.length < 2) throw new BadRequestException('Please enter at least 2 characters');
     return this.authors.search(query.slice(0, 200));
+  }
+
+  /** Type-ahead suggestions while typing in the search box: ?kind=authors|subjects&q=… */
+  @Get('suggest')
+  suggest(@Query('q') q?: string, @Query('kind') kind?: string) {
+    const query = (q ?? '').trim();
+    if (query.length < 2) return [];
+    return this.authors.suggest(kind === 'subjects' ? 'subjects' : 'authors', query.slice(0, 100));
   }
 
   @Get('claim/orcid-url')

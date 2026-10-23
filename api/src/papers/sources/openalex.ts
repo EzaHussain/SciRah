@@ -420,6 +420,31 @@ export async function worksBySubfields(
     .filter((x): x is Paper => !!x && x.authors.length > 0 && x.title.toLowerCase() !== x.venue?.toLowerCase());
 }
 
+export interface Suggestion {
+  id: string;
+  name: string;
+  /** Institution (authors) or field (subjects). */
+  hint?: string;
+  works?: number;
+  citations?: number;
+}
+
+/** Type-ahead suggestions while the user is typing an author name or a subject (OpenAlex autocomplete). */
+export async function autocomplete(kind: 'authors' | 'subjects', q: string): Promise<Suggestion[]> {
+  type Row = { id: string; display_name: string; hint?: string | null; works_count?: number; cited_by_count?: number };
+  const get = (entity: string) => fetchJson<{ results: Row[] }>(url(`/autocomplete/${entity}`, { q })).then((d) => d.results);
+  const rows =
+    kind === 'authors'
+      ? await get('authors')
+      : (await Promise.allSettled(['fields', 'subfields', 'topics'].map(get))).flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+  return rows
+    // OpenAlex's hint for authors is their "last known" institution, which can be a one-off collaboration — leave it out.
+    .map((r) => ({ id: short(r.id)!, name: r.display_name, hint: kind === 'subjects' ? (r.hint ?? undefined) : undefined, works: r.works_count, citations: r.cited_by_count }))
+    // Best-known first: most-cited researchers, largest subjects.
+    .sort((a, b) => (kind === 'subjects' ? (b.works ?? 0) - (a.works ?? 0) : (b.citations ?? 0) - (a.citations ?? 0)))
+    .slice(0, 8);
+}
+
 /** Institution name autocomplete (for the "Institution" search filter). */
 export async function autocompleteInstitutions(q: string): Promise<{ id: string; name: string; hint?: string; works?: number }[]> {
   const data = await fetchJson<{ results: { id: string; display_name: string; hint?: string; works_count?: number }[] }>(
@@ -660,4 +685,18 @@ export async function authorScoreWorks(authorId: string, max = 1000): Promise<{ 
     if (data.results.length < 200 || page >= 5) break;
   }
   return { works, total };
+}
+
+/** Every work by an author (up to `max`, most-cited first) with its DOI and OpenAlex citation count. */
+export async function authorWorkCitations(authorId: string, max = 1000): Promise<{ doi?: string; citations: number }[]> {
+  const out: { doi?: string; citations: number }[] = [];
+  for (let page = 1; out.length < max; page++) {
+    const data: OAList<{ doi?: string | null; cited_by_count?: number }> = await fetchJson(
+      url('/works', { filter: `author.id:${authorId},is_paratext:false`, sort: 'cited_by_count:desc', per_page: 200, page, select: 'doi,cited_by_count' }),
+      { timeoutMs: 20_000 },
+    );
+    for (const w of data.results) out.push({ doi: normalizeDoi(w.doi ?? undefined) ?? undefined, citations: w.cited_by_count ?? 0 });
+    if (data.results.length < 200 || page >= 5) break;
+  }
+  return out;
 }

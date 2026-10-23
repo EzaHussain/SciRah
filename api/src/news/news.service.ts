@@ -27,6 +27,19 @@ export interface NewsResult {
   providers: { name: string; ok: boolean; count: number; error?: string }[];
 }
 
+/** Pakistan, its provinces, major cities and universities. */
+const PK_RE =
+  /\b(pakistan\w*|karachi|lahore|islamabad|rawalpindi|peshawar|quetta|multan|faisalabad|hyderabad,? sindh|punjab,? pakistan|sindh|khyber pakhtunkhwa|balochistan|gilgit|indus (river|basin)|comsats|quaid-i-azam|lums|nust|aga khan university)\b/i;
+/** Words that show a story is about a research study rather than general news. */
+const RESEARCH_RE = /\b(study|studies|researchers|scientists?|journal|published|findings|discover\w*|trial)\b/i;
+const PK_RESEARCH_QUERIES = [
+  '"Pakistani researchers" OR "Pakistani scientists" OR "researchers from Pakistan"',
+  'Pakistan university study "published in" journal',
+  'Pakistan "study finds" OR "study reveals" OR "new study"',
+  'COMSATS OR NUST OR LUMS OR "Quaid-i-Azam University" OR "Aga Khan University" OR "University of the Punjab" researchers study',
+  'Karachi OR Lahore OR Islamabad OR Peshawar scientists study published',
+];
+
 export const SPANS: NewsSpan[] = ['24h', '7d', '30d'];
 const SPAN_MS: Record<NewsSpan, number> = { '24h': 86_400_000, '7d': 7 * 86_400_000, '30d': 30 * 86_400_000 };
 
@@ -44,6 +57,26 @@ export class NewsService {
   /** All recent research stories (refreshed hourly). */
   researchPool(): Promise<NewsItem[]> {
     return this.cache.wrap('news:research:pool:v1', 60 * 60, () => scienceDailyPool());
+  }
+
+  /**
+   * Research news from Pakistan (refreshed hourly): research stories that mention Pakistan, plus reports
+   * about studies by Pakistani researchers and universities (Google News, Pakistan edition).
+   */
+  pakistanResearch(): Promise<NewsItem[]> {
+    return this.cache.wrap('news:research:pk:v1', 60 * 60, async () => {
+      const pool = await this.researchPool().catch(() => [] as NewsItem[]);
+      const local = pool.filter((it) => PK_RE.test(`${it.title} ${it.snippet ?? ''}`));
+      const settled = await Promise.allSettled(PK_RESEARCH_QUERIES.map((q) => googleNews(q, 'pk', '30d', 30)));
+      const press = settled
+        .flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+        .filter((it) => {
+          // Ignore the outlet's own name ("Journalism Pakistan") — the story itself must be about Pakistan.
+          const text = `${it.title} ${it.snippet ?? ''}`.split(it.source).join(' ');
+          return PK_RE.test(text) && RESEARCH_RE.test(text);
+        });
+      return mergeNews([...local, ...press]).map((it) => ({ ...it, country: 'PK' }));
+    });
   }
 
   private async research(query: string, span: NewsSpan): Promise<NewsItem[]> {
@@ -120,10 +153,11 @@ export class NewsService {
    * "For you": research stories on the user's topics, interleaved so one topic can't crowd out the rest,
    * topped up with the latest research news. Only stories about published research — no general news.
    */
-  async forYou(userId: string | null, _region: NewsRegion, span: NewsSpan) {
+  async forYou(userId: string | null, region: NewsRegion, span: NewsSpan) {
     const personal = userId ? await this.topicsFor(userId).catch(() => []) : [];
-    const pool = await this.researchPool().catch(() => [] as NewsItem[]);
-    const cutoff = new Date(Date.now() - SPAN_MS[span === '24h' ? '7d' : span]).toISOString();
+    const pool = await (region === 'pk' ? this.pakistanResearch() : this.researchPool()).catch(() => [] as NewsItem[]);
+    // Pakistan has far fewer stories, so look back a month there.
+    const cutoff = new Date(Date.now() - SPAN_MS[region === 'pk' ? '30d' : span === '24h' ? '7d' : span]).toISOString();
     const recent = pool.filter((it) => it.publishedAt >= cutoff);
 
     const seen = new Set<string>();

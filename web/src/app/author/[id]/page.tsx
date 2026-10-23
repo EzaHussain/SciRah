@@ -24,7 +24,10 @@ const getAuthor = cache(async (id: string) => {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const a = await getAuthor(decodeParam((await params).id)).catch(() => null);
-  return { title: a ? a.name : "Researcher not found" };
+  if (!a) return { title: "Researcher not found" };
+  const where = a.institutions[0]?.name;
+  const description = `${a.name}${where ? `, ${where}` : ""}: research papers, citations, h-index and SciRah Score.`;
+  return { title: a.name, description, alternates: { canonical: authorHref(a.id) }, openGraph: { title: a.name, description, type: "profile", url: authorHref(a.id) } };
 }
 
 export default async function AuthorPage({

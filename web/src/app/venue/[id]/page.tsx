@@ -21,7 +21,9 @@ const getVenue = cache(async (id: string) => {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const v = await getVenue(decodeParam((await params).id)).catch(() => null);
-  return { title: v ? v.name : "Not found" };
+  if (!v) return { title: "Not found" };
+  const description = `${v.name}: papers, citations, impact and topics on SciRah.`;
+  return { title: v.name, description, alternates: { canonical: venueHref(v.id) } };
 }
 
 const TYPE_LABEL: Record<string, string> = {

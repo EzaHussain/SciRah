@@ -21,11 +21,19 @@ const nastaliq = Noto_Nastaliq_Urdu({
   preload: false, // only needed once a reader switches to Urdu
 });
 
+const DESCRIPTION =
+  "SciRah helps students and researchers in Pakistan find research papers from OpenAlex, Semantic Scholar, Crossref, CORE, arXiv and PubMed — free, with plain-language AI summaries in 7 languages including Urdu.";
+
 export const metadata: Metadata = {
   title: { default: "SciRah — find your path through research", template: "%s · SciRah" },
-  description:
-    "SciRah helps students and researchers in Pakistan discover papers from OpenAlex, Semantic Scholar, Crossref, CORE, arXiv and PubMed — with plain-language summaries in English and Urdu.",
+  description: DESCRIPTION,
   metadataBase: new URL(siteUrl()),
+  applicationName: "SciRah",
+  keywords: ["research papers", "Pakistan research", "academic search", "Urdu summaries", "researchers Pakistan", "open access", "SciRah"],
+  openGraph: { type: "website", siteName: "SciRah", locale: "en_PK", title: "SciRah — find your path through research", description: DESCRIPTION },
+  twitter: { card: "summary_large_image", title: "SciRah — find your path through research", description: DESCRIPTION },
+  // Google Search Console "HTML tag" verification (optional — the DNS method needs no code).
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : undefined,
 };
 
 export const viewport: Viewport = {

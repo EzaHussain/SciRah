@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ForYouFeed, NewsTeaser, TrendingFeed } from "@/components/Feeds";
@@ -8,6 +9,9 @@ const STARTERS: { q: string; mode?: string; pk?: boolean }[] = [
   { q: "dengue" },
   { q: "Artificial Intelligence", mode: "subject" },
 ];
+
+// The home page is the canonical "/" (set here, not in the layout, so other pages don't inherit it).
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 const SOURCES = ["OpenAlex", "Semantic Scholar", "Crossref", "CORE", "arXiv", "PubMed"];
 

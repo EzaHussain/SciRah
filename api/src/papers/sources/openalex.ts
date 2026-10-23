@@ -439,16 +439,39 @@ export async function autocomplete(kind: 'authors' | 'subjects' | 'keywords', q:
   type Row = { id: string; display_name: string; hint?: string | null; works_count?: number; cited_by_count?: number };
   const get = (entity: string) => fetchJson<{ results: Row[] }>(url(`/autocomplete/${entity}`, { q })).then((d) => d.results);
   if (kind === 'keywords') {
-    const [phrases, papers] = await Promise.allSettled([get('keywords'), get('works')]);
-    const list = (r: PromiseSettledResult<Row[]>) => (r.status === 'fulfilled' ? r.value : []);
-    return [
-      ...list(phrases)
-        .slice(0, 6)
-        .map((r) => ({ id: short(r.id)!, name: r.display_name, works: r.works_count, kind: 'query' as const })),
-      ...list(papers)
-        .slice(0, 3)
-        .map((r) => ({ id: short(r.id)!, name: r.display_name, hint: r.hint ?? undefined, citations: r.cited_by_count, kind: 'paper' as const })),
-    ];
+    // Related papers (most relevant to what's typed, with descriptive titles), then a few search phrases.
+    // The hint is year · journal — never author names, which made paper suggestions look like people.
+    type W = { id: string; display_name?: string; publication_year?: number; cited_by_count?: number; primary_location?: { source?: { display_name?: string } | null } | null };
+    const [papers, phrases] = await Promise.allSettled([
+      fetchJson<OAList<W>>(
+        url('/works', { search: q, filter: 'is_paratext:false,has_abstract:true', per_page: 25, select: 'id,display_name,publication_year,cited_by_count,primary_location' }),
+      ).then((d) => d.results),
+      get('keywords'),
+    ]);
+    const seenTitles = new Set<string>();
+    const paperList = (papers.status === 'fulfilled' ? papers.value : [])
+      // Skip short titles like "Dengue" (they say nothing about the paper) and near-identical titles.
+      .filter((w) => {
+        const t = (w.display_name ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+        if (t.split(' ').length < 4 || seenTitles.has(t)) return false;
+        seenTitles.add(t);
+        return true;
+      })
+      // Of the most relevant papers, show the most-cited (usually the best-known studies) first.
+      .sort((a, b) => (b.cited_by_count ?? 0) - (a.cited_by_count ?? 0))
+      .slice(0, 6)
+      .map((w) => ({
+        id: short(w.id)!,
+        name: w.display_name!.replace(/<[^>]+>/g, ''),
+        hint: [w.publication_year, w.primary_location?.source?.display_name].filter(Boolean).join(' · ') || undefined,
+        citations: w.cited_by_count,
+        kind: 'paper' as const,
+      }));
+    const phraseList = (phrases.status === 'fulfilled' ? phrases.value : [])
+      .filter((r) => r.display_name.toLowerCase() !== q.trim().toLowerCase())
+      .slice(0, 3)
+      .map((r) => ({ id: short(r.id)!, name: r.display_name, works: r.works_count, kind: 'query' as const }));
+    return [...paperList, ...phraseList];
   }
   const rows =
     kind === 'authors'

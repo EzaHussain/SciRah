@@ -76,7 +76,7 @@ export class AuthorsService {
 
   /** Type-ahead suggestions for the search box (author names or subjects). */
   suggest(kind: 'authors' | 'subjects' | 'keywords', q: string) {
-    return this.cache.wrap(`suggest:v3:${kind}:${q.toLowerCase()}`, 24 * 3600, () => openalex.autocomplete(kind, q));
+    return this.cache.wrap(`suggest:v5:${kind}:${q.toLowerCase()}`, 24 * 3600, () => openalex.autocomplete(kind, q));
   }
 
   search(q: string): Promise<AuthorSummary[]> {

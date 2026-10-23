@@ -75,8 +75,8 @@ export class AuthorsService {
   ) {}
 
   /** Type-ahead suggestions for the search box (author names or subjects). */
-  suggest(kind: 'authors' | 'subjects', q: string) {
-    return this.cache.wrap(`suggest:v2:${kind}:${q.toLowerCase()}`, 24 * 3600, () => openalex.autocomplete(kind, q));
+  suggest(kind: 'authors' | 'subjects' | 'keywords', q: string) {
+    return this.cache.wrap(`suggest:v3:${kind}:${q.toLowerCase()}`, 24 * 3600, () => openalex.autocomplete(kind, q));
   }
 
   search(q: string): Promise<AuthorSummary[]> {
@@ -622,12 +622,12 @@ export class AuthorsController {
     return this.authors.search(query.slice(0, 200));
   }
 
-  /** Type-ahead suggestions while typing in the search box: ?kind=authors|subjects&q=… */
+  /** Type-ahead suggestions while typing in the search box: ?kind=authors|subjects|keywords&q=… */
   @Get('suggest')
   suggest(@Query('q') q?: string, @Query('kind') kind?: string) {
     const query = (q ?? '').trim();
     if (query.length < 2) return [];
-    return this.authors.suggest(kind === 'subjects' ? 'subjects' : 'authors', query.slice(0, 100));
+    return this.authors.suggest(kind === 'subjects' || kind === 'keywords' ? kind : 'authors', query.slice(0, 100));
   }
 
   @Get('claim/orcid-url')

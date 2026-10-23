@@ -6,10 +6,7 @@ import { SearchBar } from "@/components/SearchBar";
 const STARTERS: { q: string; mode?: string; pk?: boolean }[] = [
   { q: "climate change adaptation", pk: true },
   { q: "dengue" },
-  { q: "wheat yield", pk: true },
   { q: "Artificial Intelligence", mode: "subject" },
-  { q: "Indus basin water" },
-  { q: "hepatitis C treatment" },
 ];
 
 const SOURCES = ["OpenAlex", "Semantic Scholar", "Crossref", "CORE", "arXiv", "PubMed"];
@@ -18,7 +15,7 @@ export default function Home() {
   return (
     <>
       <section className="relative z-10">
-        <div className="relative mx-auto max-w-3xl px-4 pt-12 pb-6 text-center sm:px-6 sm:pt-16 sm:pb-8">
+        <div className="relative mx-auto max-w-3xl px-4 pt-8 pb-3 text-center sm:px-6 sm:pt-12 sm:pb-4">
           <p className="label mb-4 inline-flex items-center gap-2 rounded-full border border-line bg-card/70 px-3 py-1 text-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Research discovery for Pakistan
           </p>
@@ -28,12 +25,12 @@ export default function Home() {
           <p className="mx-auto mt-4 max-w-xl text-base text-muted sm:text-lg">
             Search millions of papers from six open scholarly databases at once, with plain-language summaries in 7 languages.
           </p>
-          <div className="mt-8 text-left">
+          <div className="mt-6 text-left">
             <Suspense>
               <SearchBar size="lg" />
             </Suspense>
           </div>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
             {STARTERS.map((s) => {
               const p = new URLSearchParams({ q: s.q, ...(s.mode ? { mode: s.mode } : {}), ...(s.pk ? { pk: "1" } : {}) });
               return (
@@ -44,7 +41,7 @@ export default function Home() {
               );
             })}
           </div>
-          <p className="mt-6 font-mono text-[11px] text-muted">
+          <p className="mt-3 font-mono text-[11px] text-muted">
             Live from {SOURCES.join(" · ")}
           </p>
         </div>

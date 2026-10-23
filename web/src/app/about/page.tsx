@@ -44,7 +44,6 @@ export default function AboutPage() {
       </div>
 
       <p className="mt-10 text-sm text-muted">
-        Questions or feedback: <a href="mailto:ezahussainn@gmail.com" className="link">ezahussainn@gmail.com</a> ·{" "}
         <Link href="/score" className="link">How the SciRah Score works</Link> · <Link href="/privacy" className="link">Privacy</Link> ·{" "}
         <Link href="/terms" className="link">Terms</Link>
       </p>

@@ -103,10 +103,11 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2>Changes and contact</h2>
           <p>
-            If we change this policy we will update the date above. Questions or requests about your data: email{" "}
-            <a href="mailto:ezahussainn@gmail.com" className="link">
-              ezahussainn@gmail.com
-            </a>
+            If we change this policy we will update the date above. You can see, change or delete your account and all of its data at any time
+            in{" "}
+            <Link href="/account" className="link">
+              Account settings
+            </Link>
             .
           </p>
         </section>

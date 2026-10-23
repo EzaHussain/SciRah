@@ -39,11 +39,17 @@ export const config = {
   orcidClientSecret: env('ORCID_CLIENT_SECRET'),
   orcidBaseUrl: env('ORCID_BASE_URL', 'https://orcid.org').replace(/\/$/, ''),
 
-  // Sending email (6-digit codes that confirm a researcher's university email). Uses Resend's HTTP API
-  // (https://resend.com, free tier) because Railway blocks ordinary SMTP. MAIL_FROM must be on a domain
-  // verified in Resend, e.g. "SciRah <verify@scirah.com>". Optional: without it, university-email
-  // verification is switched off.
+  // Sending email (6-digit codes that confirm a researcher's university email). Optional: without it,
+  // university-email codes are switched off.
+  // Nodemailer over SMTP, e.g. Gmail: SMTP_HOST=smtp.gmail.com, SMTP_PORT=465, SMTP_USER=you@gmail.com,
+  // SMTP_PASS=<16-letter Google app password>. Railway blocks SMTP on Free/Hobby plans (works on Pro / locally).
+  smtpHost: env('SMTP_HOST'),
+  smtpPort: Number(env('SMTP_PORT', '465')),
+  smtpUser: env('SMTP_USER'),
+  smtpPass: env('SMTP_PASS'),
+  // Alternative that works on any host: Resend's HTTP API (https://resend.com).
   resendApiKey: env('RESEND_API_KEY'),
+  // Sender shown in emails, e.g. "SciRah <you@gmail.com>" (SMTP) or "SciRah <verify@scirah.com>" (Resend).
   mailFrom: env('MAIL_FROM'),
   // Local testing only: print emails to the server log instead of sending them.
   mailDevLog: bool('MAIL_DEV_LOG', false),

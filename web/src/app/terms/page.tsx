@@ -69,10 +69,6 @@ export default function TermsPage() {
             <Link href="/privacy" className="link">
               Privacy policy
             </Link>
-            . Contact:{" "}
-            <a href="mailto:ezahussainn@gmail.com" className="link">
-              ezahussainn@gmail.com
-            </a>
             .
           </p>
         </section>

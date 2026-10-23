@@ -423,20 +423,37 @@ export async function worksBySubfields(
 export interface Suggestion {
   id: string;
   name: string;
-  /** Institution (authors) or field (subjects). */
+  /** Institution (authors), field (subjects) or authors (papers). */
   hint?: string;
   works?: number;
   citations?: number;
+  /** Keyword search only: a search phrase to complete the query, or a paper to open directly. */
+  kind?: 'query' | 'paper';
 }
 
-/** Type-ahead suggestions while the user is typing an author name or a subject (OpenAlex autocomplete). */
-export async function autocomplete(kind: 'authors' | 'subjects', q: string): Promise<Suggestion[]> {
+/**
+ * Type-ahead suggestions while the user is typing (OpenAlex autocomplete): author names, subjects, or —
+ * for keyword search — common search phrases plus a few matching paper titles.
+ */
+export async function autocomplete(kind: 'authors' | 'subjects' | 'keywords', q: string): Promise<Suggestion[]> {
   type Row = { id: string; display_name: string; hint?: string | null; works_count?: number; cited_by_count?: number };
   const get = (entity: string) => fetchJson<{ results: Row[] }>(url(`/autocomplete/${entity}`, { q })).then((d) => d.results);
+  if (kind === 'keywords') {
+    const [phrases, papers] = await Promise.allSettled([get('keywords'), get('works')]);
+    const list = (r: PromiseSettledResult<Row[]>) => (r.status === 'fulfilled' ? r.value : []);
+    return [
+      ...list(phrases)
+        .slice(0, 6)
+        .map((r) => ({ id: short(r.id)!, name: r.display_name, works: r.works_count, kind: 'query' as const })),
+      ...list(papers)
+        .slice(0, 3)
+        .map((r) => ({ id: short(r.id)!, name: r.display_name, hint: r.hint ?? undefined, citations: r.cited_by_count, kind: 'paper' as const })),
+    ];
+  }
   const rows =
     kind === 'authors'
       ? await get('authors')
-      : (await Promise.allSettled(['fields', 'subfields', 'topics'].map(get))).flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+      : (await Promise.allSettled(['fields', 'subfields', 'topics', 'keywords'].map(get))).flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
   return rows
     // OpenAlex's hint for authors is their "last known" institution, which can be a one-off collaboration — leave it out.
     .map((r) => ({ id: short(r.id)!, name: r.display_name, hint: kind === 'subjects' ? (r.hint ?? undefined) : undefined, works: r.works_count, citations: r.cited_by_count }))

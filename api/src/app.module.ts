@@ -22,6 +22,7 @@ import { PapersController } from './papers/papers.controller.js';
 import { FullTextService } from './papers/fulltext.service.js';
 import { InsightsService } from './papers/insights.service.js';
 import { PapersService } from './papers/papers.service.js';
+import { SeoController } from './seo/seo.controller.js';
 import { ReaderController } from './reader/reader.controller.js';
 import { ResearchersController, SubmissionsController, SubmissionsService } from './submissions/submissions.controller.js';
 import { VenuesController } from './venues/venues.controller.js';
@@ -78,6 +79,7 @@ class HealthController {
     ResearchersController,
     ExploreController,
     AdminController,
+    SeoController,
   ],
   providers: [
     CacheService,

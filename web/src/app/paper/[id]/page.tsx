@@ -32,7 +32,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: paper.title,
     description,
-    openGraph: { title: paper.title, description, type: "article", siteName: "SciRah" },
+    alternates: { canonical: paperHref(paper.id) },
+    openGraph: { title: paper.title, description, type: "article", siteName: "SciRah", url: paperHref(paper.id) },
     twitter: { card: "summary_large_image", title: paper.title, description },
   };
 }
@@ -45,8 +46,25 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
   const here = paperHref(paper.id);
   const read = (url: string) => readerHref(url, { title: paper.title, paperId: paper.id });
 
+  // Structured data so search engines understand this page is a scholarly article.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    headline: paper.title.slice(0, 250),
+    name: paper.title,
+    author: paper.authors.slice(0, 20).map((a) => ({ "@type": "Person", name: a.name })),
+    ...(paper.year ? { datePublished: String(paper.year) } : {}),
+    ...(paper.venue ? { isPartOf: { "@type": "Periodical", name: paper.venue } } : {}),
+    ...(paper.abstract ? { abstract: paper.abstract.slice(0, 2000) } : {}),
+    ...(paper.ids.doi ? { identifier: `https://doi.org/${paper.ids.doi}`, sameAs: `https://doi.org/${paper.ids.doi}` } : {}),
+    ...(paper.citationCount != null ? { citationCount: paper.citationCount } : {}),
+    isAccessibleForFree: !!paper.isOpenAccess,
+    url: paperHref(paper.id),
+  };
+
   return (
     <article className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <div className="grid gap-8 lg:grid-cols-[1fr_18rem]">
         <div className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center gap-2">

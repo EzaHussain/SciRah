@@ -228,4 +228,31 @@ create table if not exists notifications (
 );
 create index if not exists notifications_user_idx on notifications (user_id, created_at desc);
 create index if not exists notifications_unread_idx on notifications (user_id) where read_at is null;
+
+-- A researcher confirming their university email to verify a profile (6-digit code, hashed).
+create table if not exists email_codes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users (id) on delete cascade,
+  author_id text not null,
+  email text not null,
+  code_hash text not null,
+  domain_matches boolean not null default false,
+  attempts int not null default 0,
+  used_at timestamptz,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists email_codes_user_idx on email_codes (user_id, created_at desc);
+alter table author_claims add column if not exists verified_email text;
+
+-- Papers a verified researcher removed from their profile ("This is not my paper").
+create table if not exists author_hidden_works (
+  author_id text not null,
+  work_id text not null,
+  title text,
+  -- Removed together with the researcher's account.
+  hidden_by uuid references users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (author_id, work_id)
+);
 `;

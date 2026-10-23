@@ -39,6 +39,15 @@ export const config = {
   orcidClientSecret: env('ORCID_CLIENT_SECRET'),
   orcidBaseUrl: env('ORCID_BASE_URL', 'https://orcid.org').replace(/\/$/, ''),
 
+  // Sending email (6-digit codes that confirm a researcher's university email). Uses Resend's HTTP API
+  // (https://resend.com, free tier) because Railway blocks ordinary SMTP. MAIL_FROM must be on a domain
+  // verified in Resend, e.g. "SciRah <verify@scirah.com>". Optional: without it, university-email
+  // verification is switched off.
+  resendApiKey: env('RESEND_API_KEY'),
+  mailFrom: env('MAIL_FROM'),
+  // Local testing only: print emails to the server log instead of sending them.
+  mailDevLog: bool('MAIL_DEV_LOG', false),
+
   // Accounts that can approve manually added papers (comma-separated emails).
   adminEmails: env('ADMIN_EMAILS')
     .split(',')

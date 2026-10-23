@@ -6,6 +6,7 @@ import { RoadDivider } from "@/components/brand";
 import { formatCount, PaperCard } from "@/components/PaperCard";
 import { AuthorMetricsPanel } from "@/components/AuthorMetricsPanel";
 import { AuthorOwnerPanel } from "@/components/AuthorOwnerPanel";
+import { AuthorPapers } from "@/components/AuthorPapers";
 import { ScoreCard } from "@/components/ScoreCard";
 import { ShareMenu } from "@/components/ShareMenu";
 import { YearBars } from "@/components/YearBars";
@@ -58,13 +59,8 @@ export default async function AuthorPage({
             <ul className="mt-3 flex flex-col gap-1 text-[15px]">
               {a.institutions.map((inst) => (
                 <li key={inst.name} className="flex items-center gap-2">
-                  {inst.url ? (
-                    <Link href={read(inst.url, inst.name)} className="link">
-                      {inst.name}
-                    </Link>
-                  ) : (
-                    <span>{inst.name}</span>
-                  )}
+                  {/* Plain text: the institution registry (ror.org) can't be shown inside SciRah. */}
+                  <span className="font-medium">{inst.name}</span>
           {a.department && <p className="mt-1.5 max-w-2xl text-sm text-muted">{a.department}</p>}
                   {inst.countryCode && <span className="tag">{inst.countryCode}</span>}
                 </li>
@@ -73,10 +69,11 @@ export default async function AuthorPage({
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             <ShareMenu path={here} title={`${a.name} — researcher profile on SciRah`} buttonLabel="Share profile" className="btn-ghost py-1.5" />
+            {/* ORCID doesn't allow its pages inside other sites, so show the iD itself rather than a dead link. */}
             {a.orcid && (
-              <Link href={read(a.orcid, `${a.name} · ORCID`)} className="btn-ghost py-1.5">
-                ORCID
-              </Link>
+              <span className="tag self-center" title="ORCID iD: this researcher's unique international researcher number">
+                ORCID iD {a.orcid.replace(/^https?:\/\/orcid\.org\//, "")}
+              </span>
             )}
             {a.homepage && (
               <Link href={read(a.homepage, `${a.name} · Homepage`)} className="btn-ghost py-1.5">
@@ -125,7 +122,9 @@ export default async function AuthorPage({
           <h2 id="works" className="mb-4 text-xl font-semibold">
             Most-cited papers
           </h2>
-          {a.papers.length === 0 ? (
+          {a.source === "openalex" ? (
+            <AuthorPapers authorId={a.id} papers={a.papers} />
+          ) : a.papers.length === 0 ? (
             <p className="text-muted">No papers found for this researcher.</p>
           ) : (
             <ol className="space-y-3">

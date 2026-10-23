@@ -8,6 +8,9 @@ import type { AuthorClaim } from "@/lib/types";
 import { useAuth } from "./AuthProvider";
 import { SpinnerIcon } from "./icons";
 
+/** Fired whenever this profile's verification state is (re)loaded. */
+export const CLAIM_CHANGED = "scirah:claim-changed";
+
 const SOURCES = ["Google Scholar", "Scopus", "Web of Science", "ResearchGate", "Other"];
 
 /**
@@ -18,11 +21,13 @@ export function AuthorOwnerPanel({ authorId, name }: { authorId: string; name: s
   const { user, getToken, loading } = useAuth();
   const pathname = usePathname();
   const [claim, setClaim] = useState<AuthorClaim | null>(null);
-  const [mode, setMode] = useState<null | "request" | "edit">(null);
+  const [mode, setMode] = useState<null | "request" | "edit" | "email">(null);
 
   const load = useCallback(async () => {
     const c = await api<AuthorClaim>(`/authors/${encodeURIComponent(authorId)}/claim`, { token: await getToken() }).catch(() => null);
     setClaim(c);
+    // Let the paper list know (it shows "Not my paper" once the profile is yours).
+    window.dispatchEvent(new Event(CLAIM_CHANGED));
   }, [authorId, getToken]);
 
   useEffect(() => {
@@ -38,6 +43,9 @@ export function AuthorOwnerPanel({ authorId, name }: { authorId: string; name: s
       {claim.claimed && o ? (
         <>
           <p className="label flex items-center gap-1.5 text-primary">✓ Verified researcher</p>
+          {claim.method === "email" && claim.verifiedEmailDomain && (
+            <p className="mt-1 text-[11px] text-muted">Confirmed with a university email at @{claim.verifiedEmailDomain}</p>
+          )}
           {(o.position || o.affiliation) && (
             <p className="mt-2 text-sm">
               {o.position}
@@ -98,7 +106,8 @@ export function AuthorOwnerPanel({ authorId, name }: { authorId: string; name: s
         <>
           <p className="font-medium">Are you {name}?</p>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            Verify this profile to show your bio, correct your citation numbers (e.g. from Google Scholar) and add patents and graduated students.
+            Verify this profile to show your bio, correct your citation numbers (e.g. from Google Scholar), remove papers that aren’t yours and add
+            patents and graduated students.
           </p>
           {!user ? (
             <Link href={`/login?next=${encodeURIComponent(pathname)}`} className="btn-primary mt-3 py-1.5 text-sm">
@@ -112,21 +121,133 @@ export function AuthorOwnerPanel({ authorId, name }: { authorId: string; name: s
             </p>
           ) : mode === "request" ? (
             <RequestForm authorId={authorId} onDone={async () => (setMode(null), await load())} onCancel={() => setMode(null)} />
+          ) : mode === "email" ? (
+            <EmailVerify authorId={authorId} onDone={async () => (setMode(null), await load())} onCancel={() => setMode(null)} onOther={() => setMode("request")} />
           ) : (
             <div className="mt-3 flex flex-wrap gap-2">
+              <button className="btn-primary py-1.5 text-sm" onClick={() => setMode("email")}>
+                Verify with university email
+              </button>
               {claim.claimable && (
-                <a href={`/auth/orcid?author=${encodeURIComponent(authorId)}`} className="btn-primary py-1.5 text-sm">
-                  Verify with ORCID (instant)
+                <a href={`/auth/orcid?author=${encodeURIComponent(authorId)}`} className="btn-ghost py-1.5 text-sm">
+                  Verify with ORCID
                 </a>
               )}
-              <button className={`${claim.claimable ? "btn-ghost" : "btn-primary"} py-1.5 text-sm`} onClick={() => setMode("request")}>
-                This is me
+              <button className="btn-ghost py-1.5 text-sm" onClick={() => setMode("request")}>
+                Other proof
               </button>
             </div>
           )}
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * Verify with a university email: enter it, get a 6-digit code by email, type it in. An email at the
+ * profile's own university verifies instantly; another university's email is confirmed and sent to an admin.
+ */
+function EmailVerify({ authorId, onDone, onCancel, onOther }: { authorId: string; onDone: () => void; onCancel: () => void; onOther: () => void }) {
+  const { getToken } = useAuth();
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"email" | "code" | "review">("email");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const base = `/authors/${encodeURIComponent(authorId)}/verify-email`;
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    }
+    setBusy(false);
+  };
+  const finish = (status: string) => (status === "review" ? setStep("review") : onDone());
+
+  const send = (e: React.FormEvent) => {
+    e.preventDefault();
+    run(async () => {
+      const r = await api<{ status: string }>(base, { method: "POST", token: await getToken(), body: { email } });
+      if (r.status === "code-sent") setStep("code");
+      else finish(r.status);
+    });
+  };
+  const confirm = (e: React.FormEvent) => {
+    e.preventDefault();
+    run(async () => {
+      const r = await api<{ status: string }>(`${base}/confirm`, { method: "POST", token: await getToken(), body: { code } });
+      finish(r.status);
+    });
+  };
+
+  if (step === "review")
+    return (
+      <div className="mt-3 space-y-2">
+        <p className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
+          ✓ Your email is confirmed. It isn’t from this profile’s current university, so a SciRah admin will check and approve it — usually within a
+          day.
+        </p>
+        <button className="btn-ghost py-1 text-xs" onClick={onDone}>
+          OK
+        </button>
+      </div>
+    );
+
+  return step === "email" ? (
+    <form onSubmit={send} className="mt-3 space-y-2">
+      <label className="block text-xs">
+        Your university email
+        <input className="input mt-1 py-1.5" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@university.edu.pk" autoComplete="email" />
+      </label>
+      {error && <p className="text-xs text-accent">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-primary py-1 text-xs" disabled={busy}>
+          {busy && <SpinnerIcon />} Send code
+        </button>
+        <button type="button" className="btn-ghost py-1 text-xs" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+      <p className="text-[11px] text-muted">
+        We email you a 6-digit code. An email at this profile’s university verifies you straight away. No university email?{" "}
+        <button type="button" className="link" onClick={onOther}>
+          Send other proof
+        </button>
+        .
+      </p>
+    </form>
+  ) : (
+    <form onSubmit={confirm} className="mt-3 space-y-2">
+      <p className="text-xs">
+        We sent a code to <strong>{email}</strong>. It can take a minute — check your spam folder too.
+      </p>
+      <label className="block text-xs">
+        6-digit code
+        <input
+          className="input mt-1 py-1.5 font-mono tracking-[0.3em]"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          required
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+        />
+      </label>
+      {error && <p className="text-xs text-accent">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-primary py-1 text-xs" disabled={busy || code.length !== 6}>
+          {busy && <SpinnerIcon />} Verify
+        </button>
+        <button type="button" className="btn-ghost py-1 text-xs" onClick={() => (setStep("email"), setCode(""), setError(null))}>
+          Use a different email
+        </button>
+      </div>
+    </form>
   );
 }
 

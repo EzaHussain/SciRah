@@ -20,11 +20,12 @@ const MODES: { value: SearchMode; label: string; placeholder: string }[] = [
   { value: "subject", label: "Subject", placeholder: "e.g. Agronomy and Crop Science" },
 ];
 
-export function SearchBar({ size = "md", autoFocus = false }: { size?: "md" | "lg"; autoFocus?: boolean }) {
+/** `only` restricts the box to one search type (e.g. the Authors page), hiding the type buttons. */
+export function SearchBar({ size = "md", autoFocus = false, only }: { size?: "md" | "lg"; autoFocus?: boolean; only?: SearchMode }) {
   const router = useRouter();
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
-  const [mode, setMode] = useState<SearchMode>((params.get("mode") as SearchMode) || "keyword");
+  const [mode, setMode] = useState<SearchMode>(only ?? ((params.get("mode") as SearchMode) || "keyword"));
   const current = MODES.find((m) => m.value === mode) ?? MODES[0];
   const listId = useId();
 
@@ -93,7 +94,7 @@ export function SearchBar({ size = "md", autoFocus = false }: { size?: "md" | "l
   const lg = size === "lg";
   return (
     <form onSubmit={submit} role="search" className="w-full">
-      <div role="radiogroup" aria-label="Search by" className="mb-2.5 flex gap-1.5">
+      <div role="radiogroup" aria-label="Search by" className={`mb-2.5 flex gap-1.5 ${only ? "hidden" : ""}`}>
         {MODES.map((m) => (
           <button
             key={m.value}

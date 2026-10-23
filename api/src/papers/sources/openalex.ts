@@ -688,15 +688,173 @@ export async function authorScoreWorks(authorId: string, max = 1000): Promise<{ 
 }
 
 /** Every work by an author (up to `max`, most-cited first) with its DOI and OpenAlex citation count. */
-export async function authorWorkCitations(authorId: string, max = 1000): Promise<{ doi?: string; citations: number }[]> {
-  const out: { doi?: string; citations: number }[] = [];
+export async function authorWorkCitations(authorId: string, max = 1000): Promise<{ id?: string; doi?: string; citations: number }[]> {
+  const out: { id?: string; doi?: string; citations: number }[] = [];
   for (let page = 1; out.length < max; page++) {
-    const data: OAList<{ doi?: string | null; cited_by_count?: number }> = await fetchJson(
-      url('/works', { filter: `author.id:${authorId},is_paratext:false`, sort: 'cited_by_count:desc', per_page: 200, page, select: 'doi,cited_by_count' }),
+    const data: OAList<{ id?: string; doi?: string | null; cited_by_count?: number }> = await fetchJson(
+      url('/works', { filter: `author.id:${authorId},is_paratext:false`, sort: 'cited_by_count:desc', per_page: 200, page, select: 'id,doi,cited_by_count' }),
       { timeoutMs: 20_000 },
     );
-    for (const w of data.results) out.push({ doi: normalizeDoi(w.doi ?? undefined) ?? undefined, citations: w.cited_by_count ?? 0 });
+    for (const w of data.results) out.push({ id: short(w.id), doi: normalizeDoi(w.doi ?? undefined) ?? undefined, citations: w.cited_by_count ?? 0 });
     if (data.results.length < 200 || page >= 5) break;
   }
   return out;
+}
+
+/**
+ * The organisation part of a web or email domain: "lahore.comsats.edu.pk" -> "comsats.edu.pk",
+ * "www.ox.ac.uk" -> "ox.ac.uk", "mit.edu" -> "mit.edu".
+ */
+export function orgDomain(host: string): string {
+  const parts = host.toLowerCase().replace(/^www\./, '').split('.').filter(Boolean);
+  const twoLevel = parts.length >= 3 && parts[parts.length - 1].length === 2 && ['edu', 'ac', 'com', 'org', 'gov', 'net', 'co', 'gob', 'res'].includes(parts[parts.length - 2]);
+  return parts.slice(twoLevel ? -3 : -2).join('.');
+}
+
+/** Web domains (organisation part) of institutions and the institutions linked to them (e.g. other campuses). */
+export async function institutionDomains(ids: string[]): Promise<string[]> {
+  type Inst = { id: string; homepage_url?: string | null; associated_institutions?: { id: string }[] };
+  const fetchInst = async (list: string[]) =>
+    list.length
+      ? (await fetchJson<OAList<Inst>>(url('/institutions', { filter: `openalex:${list.slice(0, 50).join('|')}`, per_page: 50, select: 'id,homepage_url,associated_institutions' }))).results
+      : [];
+  const main = await fetchInst(ids);
+  const linked = await fetchInst([...new Set(main.flatMap((i) => (i.associated_institutions ?? []).map((a) => short(a.id)!)))].filter((id) => !ids.includes(id))).catch(() => []);
+  const domains = new Set<string>();
+  for (const i of [...main, ...linked]) {
+    try {
+      if (i.homepage_url) domains.add(orgDomain(new URL(i.homepage_url).hostname));
+    } catch {
+      /* ignore malformed homepages */
+    }
+  }
+  return [...domains];
+}
+
+// ---- Explore pages (Authors, Pakistan, Topics, Journals) ----
+
+export interface TopAuthor {
+  id: string;
+  name: string;
+  institution?: string;
+  works?: number;
+  citations?: number;
+  hIndex?: number;
+}
+
+/**
+ * The most-cited researchers who currently work in a country. OpenAlex's "last known institution" also
+ * lists one-off collaborations, so each candidate is re-checked against their own affiliation on their
+ * recent papers (same rule as author profiles) and dropped unless they really work there.
+ */
+export async function topAuthorsInCountry(countryCode: string, want = 24): Promise<TopAuthor[]> {
+  const cc = countryCode.toLowerCase();
+  const candidates = await fetchJson<OAList<OAAuthor>>(
+    url('/authors', { filter: `last_known_institutions.country_code:${cc}`, sort: 'cited_by_count:desc', per_page: 60 }),
+    { timeoutMs: 20_000 },
+  );
+  const today = new Date().toISOString().slice(0, 10);
+  const out: TopAuthor[] = [];
+  const list = candidates.results;
+  for (let i = 0; i < list.length && out.length < want; i += 8) {
+    const checked = await Promise.all(
+      list.slice(i, i + 8).map(async (a) => {
+        const id = short(a.id)!;
+        const recent = await fetchJson<OAList<OAWork>>(
+          url('/works', { filter: `author.id:${id},to_publication_date:${today}`, sort: 'publication_date:desc', per_page: 25, select: 'id,publication_date,authorships' }),
+        ).catch(() => null);
+        if (!recent) return null;
+        const inst = currentInstitutions(id, recent.results).institutions.find((x) => x.country_code?.toLowerCase() === cc);
+        if (!inst) return null;
+        return {
+          id: `openalex:${id}`,
+          name: a.display_name ?? 'Unknown',
+          institution: inst.display_name ?? undefined,
+          works: a.works_count,
+          citations: a.cited_by_count,
+          hIndex: a.summary_stats?.h_index,
+        } satisfies TopAuthor;
+      }),
+    );
+    for (const c of checked) if (c && out.length < want) out.push(c);
+  }
+  return out;
+}
+
+export interface CountryOverview {
+  worksByYear: { year: number; count: number }[];
+  /** Biggest institutions by papers in the last five years. */
+  institutions: { id: string; name: string; city?: string; works: number }[];
+  institutionCount: number;
+  fields: { id: string; name: string; count: number }[];
+  journals: { id: string; name: string; count: number }[];
+}
+
+/** A country's research at a glance: papers per year, biggest institutions, strongest fields and journals. */
+export async function countryOverview(countryCode: string): Promise<CountryOverview> {
+  const cc = countryCode.toLowerCase();
+  const year = new Date().getFullYear();
+  const base = `authorships.institutions.country_code:${cc},is_paratext:false`;
+  const group = (filter: string, by: string) =>
+    fetchJson<{ group_by?: { key: string; key_display_name: string; count: number }[] }>(url('/works', { filter, group_by: by }), { timeoutMs: 20_000 }).then(
+      (d) => (d.group_by ?? []).filter((g) => g.key && g.key !== 'unknown'),
+    );
+  const [years, instGroups, instCount, fields, journals] = await Promise.all([
+    group(`${base},publication_year:${year - 10}-${year}`, 'publication_year'),
+    group(`${base},publication_year:${year - 4}-${year}`, 'authorships.institutions.id'),
+    fetchJson<OAList<unknown>>(url('/institutions', { filter: `country_code:${cc}`, per_page: 1, select: 'id' })).then((d) => d.meta.count),
+    group(`${base},publication_year:${year - 2}-${year}`, 'primary_topic.field.id'),
+    group(`${base},publication_year:${year - 2}-${year},primary_location.source.type:journal`, 'primary_location.source.id'),
+  ]);
+  return {
+    worksByYear: years.map((g) => ({ year: Number(g.key), count: g.count })).sort((a, b) => a.year - b.year),
+    institutions: await (async () => {
+      // Papers are grouped by every co-author's institution, so foreign collaborators appear too: keep this country's.
+      const top = instGroups.sort((a, b) => b.count - a.count).slice(0, 80);
+      const geo = new Map((await institutionsGeo(top.map((g) => short(g.key)!)).catch(() => [])).map((g) => [g.id, g]));
+      return top
+        .filter((g) => geo.get(short(g.key)!)?.countryCode === cc)
+        .slice(0, 25)
+        .map((g) => ({ id: short(g.key)!, name: g.key_display_name, city: geo.get(short(g.key)!)?.city, works: g.count }));
+    })(),
+    institutionCount: instCount,
+    fields: fields.map((g) => ({ id: short(g.key)!, name: g.key_display_name, count: g.count })).sort((a, b) => b.count - a.count),
+    journals: journals.slice(0, 24).map((g) => ({ id: short(g.key)!, name: g.key_display_name, count: g.count })),
+  };
+}
+
+export interface FieldInfo {
+  id: string;
+  name: string;
+  domain: string;
+  works: number;
+  subfields: { id: string; name: string }[];
+}
+
+/** OpenAlex's 26 research fields, grouped by domain, with their subfields. */
+export async function allFields(): Promise<FieldInfo[]> {
+  const data = await fetchJson<
+    OAList<{ id: string; display_name: string; works_count: number; domain?: { display_name: string }; subfields?: { id: string; display_name: string }[] }>
+  >(url('/fields', { per_page: 50, select: 'id,display_name,works_count,domain,subfields' }));
+  return data.results
+    .map((f) => ({
+      id: short(f.id)!,
+      name: f.display_name,
+      domain: f.domain?.display_name ?? 'Other',
+      works: f.works_count,
+      subfields: (f.subfields ?? []).map((s) => ({ id: short(s.id)!, name: s.display_name })).sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Type-ahead for journals (S…) and publishers (P…). */
+export async function autocompleteVenues(q: string): Promise<{ id: string; name: string; hint?: string; works?: number; kind: 'journal' | 'publisher' }[]> {
+  type Row = { id: string; display_name: string; hint?: string | null; works_count?: number };
+  const [s, p] = await Promise.allSettled([
+    fetchJson<{ results: Row[] }>(url('/autocomplete/sources', { q })),
+    fetchJson<{ results: Row[] }>(url('/autocomplete/publishers', { q })),
+  ]);
+  const map = (r: PromiseSettledResult<{ results: Row[] }>, kind: 'journal' | 'publisher') =>
+    r.status === 'fulfilled' ? r.value.results.map((x) => ({ id: short(x.id)!, name: x.display_name, hint: x.hint ?? undefined, works: x.works_count, kind })) : [];
+  return [...map(s, 'journal').slice(0, 7), ...map(p, 'publisher').slice(0, 3)];
 }

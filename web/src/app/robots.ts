@@ -7,7 +7,25 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/account", "/saved", "/notifications", "/admin", "/auth", "/api", "/login", "/signup", "/welcome", "/submit", "/read", "/*/export", "/*/slide"],
+      // Google matches these as prefixes ("/auth" would also block "/authors"), so each ends at a word
+      // boundary: "/x$" = exactly that page, "/x/" = everything under it.
+      disallow: [
+        "/account$",
+        "/account/",
+        "/saved$",
+        "/notifications$",
+        "/admin/",
+        "/auth/",
+        "/api/",
+        "/login$",
+        "/signup$",
+        "/welcome$",
+        "/submit$",
+        "/read$",
+        "/read?",
+        "/*/export",
+        "/*/slide$",
+      ],
     },
     sitemap: `${siteUrl()}/sitemap.xml`,
   };

@@ -43,7 +43,7 @@ function Welcome() {
   return (
     <div className="mx-auto max-w-lg px-4 py-12 sm:py-16">
       <div className="mb-6 text-center">
-        <HeaderLogo className="mx-auto mb-4 h-16 w-16 rounded-2xl shadow-lg" />
+        <HeaderLogo className="mx-auto mb-4 h-16 w-16" />
         <h1 className="text-2xl font-bold">Welcome{user ? `, ${user.name.split(" ")[0]}` : ""}!</h1>
         <p className="mt-1.5 text-sm text-muted">One quick question so SciRah fits how you use research. You can change it later in Account settings.</p>
       </div>

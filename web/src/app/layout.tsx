@@ -71,7 +71,7 @@ function Footer() {
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm text-muted sm:px-6 md:grid-cols-[1.4fr_1fr]">
         <div>
           <div className="mb-3 flex items-center gap-2 text-fg">
-            <HeaderLogo className="h-10 w-10 rounded-lg" />
+            <HeaderLogo />
             <span className="font-heading font-semibold">SciRah</span>
           </div>
           <p className="max-w-md leading-relaxed">
@@ -97,7 +97,6 @@ function Footer() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs">Thank you to arXiv for use of its open access interoperability.</p>
           <p className="mt-3 flex gap-4 text-xs">
             <Link href="/privacy" className="hover:text-fg">
               Privacy policy

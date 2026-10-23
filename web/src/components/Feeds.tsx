@@ -83,24 +83,7 @@ export function TrendingFeed() {
   return (
     <section>
       <SectionTitle kicker="Trending now" title={data?.personalized ? "Rising in your fields" : "Recent research gaining attention"}>
-        <div role="tablist" aria-label="Trending scope" className="flex rounded-xl border border-line bg-subtle p-0.5 text-sm">
-          {(
-            [
-              ["all", "Worldwide"],
-              ["pk", "Pakistan"],
-            ] as const
-          ).map(([v, label]) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={scope === v}
-              onClick={() => setScope(v)}
-              className={`rounded-lg px-3 py-1 transition-colors ${scope === v ? "bg-card font-medium shadow-sm" : "text-muted hover:text-fg"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <ScopeTabs value={scope} onChange={setScope} label="Trending scope" />
       </SectionTitle>
       {failed ? (
         <p className="card p-6 text-sm text-muted">Trending papers are unavailable right now.</p>
@@ -121,39 +104,79 @@ export function TrendingFeed() {
   );
 }
 
-/** A few headlines for the user's topics, linking to the full News page. */
+/** Worldwide / Pakistan switch used by the home-page sections. */
+function ScopeTabs({ value, onChange, label }: { value: "all" | "pk"; onChange: (v: "all" | "pk") => void; label: string }) {
+  return (
+    <div role="tablist" aria-label={label} className="flex rounded-xl border border-line bg-subtle p-0.5 text-sm">
+      {(
+        [
+          ["all", "Worldwide"],
+          ["pk", "Pakistan"],
+        ] as const
+      ).map(([v, text]) => (
+        <button
+          key={v}
+          role="tab"
+          aria-selected={value === v}
+          onClick={() => onChange(v)}
+          className={`rounded-lg px-3 py-1 transition-colors ${value === v ? "bg-card font-medium shadow-sm" : "text-muted hover:text-fg"}`}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A few research headlines (worldwide or from Pakistan) for the user's topics, linking to the full News page. */
 export function NewsTeaser() {
   const { user, loading, getToken } = useAuth();
+  const [scope, setScope] = useState<"all" | "pk">("all");
   const [result, setResult] = useState<{ key: string; items?: NewsItem[]; personalized?: boolean } | null>(null);
-  const key = user?.id ?? "anon";
+  const key = `${scope}:${user?.id ?? "anon"}`;
   const current = result?.key === key ? result : null;
 
   useEffect(() => {
     if (loading) return;
     let cancelled = false;
     getToken()
-      .then((token) => api<{ personalized: boolean; items: NewsItem[] }>("/news/for-you", { token }))
+      .then((token) => api<{ personalized: boolean; items: NewsItem[] }>(`/news/for-you${scope === "pk" ? "?region=pk" : ""}`, { token }))
       .then((d) => !cancelled && setResult({ key, items: d.items.slice(0, 4), personalized: d.personalized }))
       .catch(() => !cancelled && setResult({ key, items: [] }));
     return () => {
       cancelled = true;
     };
-  }, [key, loading, getToken]);
+  }, [key, scope, loading, getToken]);
 
-  if (current && !current.items?.length) return null;
+  // Hide the section only if worldwide research news is unavailable altogether.
+  if (scope === "all" && current && !current.items?.length) return null;
+
+  const title =
+    scope === "pk"
+      ? "Research news from Pakistan"
+      : current?.personalized
+        ? "New research on your topics"
+        : "Latest research in the news";
 
   return (
     <section className="mb-12">
-      <SectionTitle kicker="Research news" title={current?.personalized ? "New research on your topics" : "Latest research in the news"}>
-        <Link href="/news" className="text-sm text-muted hover:text-fg">
-          All research news →
-        </Link>
+      <SectionTitle kicker="Research news" title={title}>
+        <div className="flex items-center gap-3">
+          <ScopeTabs value={scope} onChange={setScope} label="Research news location" />
+          <Link href={`/news${scope === "pk" ? "?region=pk" : ""}`} className="text-sm text-muted hover:text-fg">
+            All research news →
+          </Link>
+        </div>
       </SectionTitle>
-      <div className="grid gap-3 md:grid-cols-2">
-        {current?.items
-          ? current.items.map((it) => <NewsCard key={it.id} item={it} compact />)
-          : Array.from({ length: 4 }).map((_, i) => <NewsCardSkeleton key={i} />)}
-      </div>
+      {current && !current.items?.length ? (
+        <p className="card p-6 text-sm text-muted">No recent research news from Pakistan right now. Check back soon.</p>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {current?.items
+            ? current.items.map((it) => <NewsCard key={it.id} item={it} compact />)
+            : Array.from({ length: 4 }).map((_, i) => <NewsCardSkeleton key={i} />)}
+        </div>
+      )}
     </section>
   );
 }

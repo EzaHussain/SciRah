@@ -36,9 +36,12 @@ export function AuthorMetricsPanel({ authorId, initial }: { authorId: string; in
   }, [authorId]);
 
   const verified = m?.verified;
-  const headline = (k: keyof AuthorMetricsSet) => verified?.[k] ?? initial[k];
+  const combined = m?.combined;
+  const headline = (k: keyof AuthorMetricsSet) => verified?.[k] ?? combined?.[k] ?? initial[k];
   const sources: { name: string; set: AuthorMetricsSet | null | undefined; href?: string; note?: string }[] = [
+    { name: "SciRah cross-check", set: m ? m.combined : undefined },
     { name: "OpenAlex", set: m?.openalex ?? initial },
+    { name: "Crossref", set: m ? m.crossref : undefined },
     { name: "Semantic Scholar", set: m?.semanticScholar, href: m?.semanticScholar?.url },
     ...(verified ? [{ name: `Researcher · ${verified.source ?? "self-reported"}`, set: verified, href: verified.url ?? undefined, note: "verified owner" }] : []),
   ];
@@ -56,6 +59,8 @@ export function AuthorMetricsPanel({ authorId, initial }: { authorId: string; in
       <p className="mt-2 text-xs text-muted">
         {verified ? (
           <>✓ Numbers confirmed by the researcher{verified.source ? ` (from ${verified.source})` : ""}. </>
+        ) : combined ? (
+          <>Cross-checked paper by paper in OpenAlex, Crossref and Semantic Scholar. </>
         ) : (
           <>From OpenAlex. </>
         )}
@@ -98,8 +103,9 @@ export function AuthorMetricsPanel({ authorId, initial }: { authorId: string; in
             </tbody>
           </table>
           <p className="mt-2 text-xs text-muted">
-            Each database finds a different set of papers and citations, so numbers differ — Google Scholar usually counts the most because it also
-            includes theses, preprints and web documents. SciRah can’t read Google Scholar automatically; a verified researcher can enter their
+            The SciRah cross-check looks up every paper in OpenAlex, Crossref and Semantic Scholar and keeps the highest citation count found
+            for each one. Each database finds a different set of citations, so numbers differ — Google Scholar usually counts the most because it
+            also includes theses, preprints and web documents. SciRah can’t read Google Scholar automatically; a verified researcher can enter their
             Google Scholar numbers on this page.
           </p>
         </div>

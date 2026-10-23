@@ -95,7 +95,7 @@ export function AuthForm() {
   return (
     <div className="mx-auto flex max-w-md flex-col px-4 py-10 sm:py-16">
       <div className="mb-6 flex flex-col items-center text-center">
-        <HeaderLogo className="mb-4 h-16 w-16 rounded-2xl shadow-lg" />
+        <HeaderLogo className="mb-4 h-16 w-16" />
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="mt-1.5 text-sm text-muted">{subtitle}</p>
       </div>

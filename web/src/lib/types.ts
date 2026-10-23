@@ -312,6 +312,10 @@ export interface AuthorClaim {
 
 export interface AuthorMetrics {
   openalex: AuthorMetricsSet;
+  /** Crossref's citation counts for the same papers (by DOI). */
+  crossref: AuthorMetricsSet | null;
+  /** Paper-by-paper cross-check: the highest count OpenAlex, Crossref or Semantic Scholar reports for each paper. */
+  combined: AuthorMetricsSet | null;
   semanticScholar: (AuthorMetricsSet & { url: string }) | null;
   verified: (AuthorMetricsSet & { source: string | null; url: string | null; updatedAt: string | null }) | null;
 }

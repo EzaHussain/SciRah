@@ -93,3 +93,23 @@ export async function getWork(doi: string): Promise<Paper | null> {
   });
   return data ? mapItem(data.message) : null;
 }
+
+/** Crossref's citation count ("is-referenced-by-count") for each DOI, looked up 40 DOIs per request. */
+export async function citationsByDois(dois: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < dois.length; i += 40) chunks.push(dois.slice(i, i + 40));
+  // A few requests at a time keeps us within Crossref's polite-pool limits.
+  for (let i = 0; i < chunks.length; i += 3) {
+    await Promise.all(
+      chunks.slice(i, i + 3).map(async (chunk) => {
+        const data = await fetchJson<{ message: { items: { DOI: string; 'is-referenced-by-count'?: number }[] } }>(
+          `${BASE}/works?${qs({ filter: chunk.map((d) => `doi:${d}`).join(','), rows: chunk.length, select: 'DOI,is-referenced-by-count', mailto: config.contactEmail })}`,
+          { timeoutMs: 20_000 },
+        );
+        for (const it of data.message.items) out.set(it.DOI.toLowerCase(), it['is-referenced-by-count'] ?? 0);
+      }),
+    );
+  }
+  return out;
+}

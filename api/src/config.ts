@@ -66,7 +66,7 @@ export const config = {
   ttsModel: env('OPENAI_TTS_MODEL', 'gpt-4o-mini-tts'),
   ttsVoice: env('OPENAI_TTS_VOICE', 'marin'),
   // AI illustrations for papers (OpenAI image generation). Each paper's image is generated once and stored.
-  imageModel: env('OPENAI_IMAGE_MODEL', 'gpt-image-1'),
+  imageModel: env('OPENAI_IMAGE_MODEL', 'gpt-image-2'),
 
   // Per-user daily cap on AI calls that actually hit OpenAI (cache hits are free).
   aiDailyLimit: Number(env('AI_DAILY_LIMIT', '40')),

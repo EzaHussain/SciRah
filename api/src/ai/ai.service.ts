@@ -33,6 +33,8 @@ Output only the summary as plain text, with no heading, bullet points or markdow
 const MIN_ABSTRACT = 200;
 const MAX_INPUT_CHARS = 15_000;
 
+const FALLBACK_IMAGE_MODEL = 'gpt-image-1-mini';
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -276,12 +278,12 @@ export class AiService {
     ].join('\n');
   }
 
-  /** Try the configured model; fall back to dall-e-3 if it isn't available on this OpenAI account. */
+  /**
+   * Try the configured model (default gpt-image-2); if this OpenAI account can't use it, fall back to the
+   * smaller gpt-image-1-mini. (gpt-image-1 retires 2026-10-23 and dall-e-3 is already gone.)
+   */
   private async generateImage(prompt: string, model = config.imageModel): Promise<{ image: Buffer; model: string }> {
-    const isDalle = model.startsWith('dall-e');
-    const body: Record<string, unknown> = isDalle
-      ? { model, prompt, n: 1, size: '1792x1024', response_format: 'b64_json' }
-      : { model, prompt, n: 1, size: '1536x1024', quality: 'low' };
+    const body: Record<string, unknown> = { model, prompt, n: 1, size: '1536x1024', quality: 'low' };
     let res: Response;
     try {
       res = await fetch('https://api.openai.com/v1/images/generations', {
@@ -298,8 +300,8 @@ export class AiService {
     if (!res.ok || !data.data?.[0]?.b64_json) {
       const msg = data.error?.message ?? `HTTP ${res.status}`;
       this.logger.warn(`Image generation with ${model} failed: ${msg}`);
-      if (!isDalle && (res.status === 403 || res.status === 404 || (res.status === 400 && /model|verif/i.test(msg))))
-        return this.generateImage(prompt, 'dall-e-3');
+      if (model !== FALLBACK_IMAGE_MODEL && (res.status === 403 || res.status === 404 || (res.status === 400 && /model|verif/i.test(msg))))
+        return this.generateImage(prompt, FALLBACK_IMAGE_MODEL);
       if (/safety|policy|rejected/i.test(msg))
         throw new UnprocessableEntityException('The AI could not create an image for this paper’s topic.');
       throw new ServiceUnavailableException('AI graphics are unavailable right now. Please try again shortly.');

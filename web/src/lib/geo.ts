@@ -1,11 +1,10 @@
-// Server-side map geometry: country outlines are projected to SVG paths here, so the browser only
-// receives finished path strings (no map data or projection library in the client bundle).
-import { geoMercator, geoNaturalEarth1, geoPath } from "d3-geo";
+// Server-side map geometry for one country's zoomed map (the world map's outlines are pre-built in
+// world-shapes.json by scripts/build-world-shapes.mjs).
+import { geoMercator, geoPath } from "d3-geo";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import countriesLib from "i18n-iso-countries";
 import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
-import world110 from "world-atlas/countries-110m.json";
 import world50 from "world-atlas/countries-50m.json";
 
 type CountryFeature = Feature<Geometry, { name: string }> & { id?: string };
@@ -25,26 +24,6 @@ function features(topo: unknown): CountryFeature[] {
 }
 
 const alpha2 = (numeric?: string) => (numeric ? countriesLib.numericToAlpha2(numeric)?.toLowerCase() : undefined);
-
-let worldCache: CountryShape[] | null = null;
-
-/** Every country (except Antarctica) as an SVG path in a 960×470 Natural Earth projection. */
-export function worldShapes(): CountryShape[] {
-  if (worldCache) return worldCache;
-  const fs = features(world110).filter((f) => f.id !== "010");
-  const projection = geoNaturalEarth1().fitExtent(
-    [
-      [4, 4],
-      [WORLD_VIEWBOX.width - 4, WORLD_VIEWBOX.height - 4],
-    ],
-    { type: "FeatureCollection", features: fs },
-  );
-  const path = geoPath(projection);
-  worldCache = fs
-    .map((f) => ({ code: alpha2(f.id) ?? "", name: f.properties.name, d: path(f) ?? "" }))
-    .filter((s) => s.code && s.d);
-  return worldCache;
-}
 
 export interface CountryMapGeometry {
   width: number;

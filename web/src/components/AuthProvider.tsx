@@ -51,6 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [savedOwner, setSavedOwner] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    // Nobody has signed in on this browser: skip the server round-trip (keeps crawlers and signed-out
+    // visitors from costing a server request on every page).
+    if (!document.cookie.split("; ").some((c) => c.startsWith("scirah_signed_in="))) {
+      setSession({ apiReachable: true, accounts: true, google: true, user: null, token: null });
+      return;
+    }
     try {
       const res = await fetch("/api/auth/session", { cache: "no-store" });
       setSession(await res.json());

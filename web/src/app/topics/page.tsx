@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, cached } from "@/lib/api";
 import type { FieldInfo } from "@/lib/types";
 
-// Live data from the SciRah API: render on each request (the API caches the numbers).
-export const dynamic = "force-dynamic";
+// Built from live SciRah data, then served from Vercel's cache and rebuilt at most once an hour (ISR).
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Topics",
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const subjectHref = (name: string) => `/search?${new URLSearchParams({ q: name, mode: "subject" })}`;
 
 export default async function TopicsPage() {
-  const fields = await api<FieldInfo[]>("/explore/fields").catch(() => null);
+  const fields = await api<FieldInfo[]>("/explore/fields", cached(revalidate)).catch(() => null);
   const domains = new Map<string, FieldInfo[]>();
   for (const f of fields ?? []) domains.set(f.domain, [...(domains.get(f.domain) ?? []), f]);
 

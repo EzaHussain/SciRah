@@ -43,6 +43,12 @@ export async function api<T>(path: string, { token, body, headers, ...init }: Ap
   return (text ? JSON.parse(text) : null) as T;
 }
 
+/**
+ * For server pages: let Vercel keep the API response (and the page built from it) for `seconds`
+ * instead of fetching and rendering on every visit.
+ */
+export const cached = (seconds: number) => ({ cache: "force-cache" as const, next: { revalidate: seconds } });
+
 export const paperHref = (id: string) => `/paper/${encodeURIComponent(id)}`;
 export const authorHref = (id: string) => `/author/${encodeURIComponent(id)}`;
 export const venueHref = (id: string) => `/venue/${encodeURIComponent(id)}`;

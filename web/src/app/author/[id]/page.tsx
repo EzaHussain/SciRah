@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import { RoadDivider } from "@/components/brand";
 import { formatCount, PaperCard } from "@/components/PaperCard";
 import { AuthorMetricsPanel } from "@/components/AuthorMetricsPanel";
 import { AuthorOwnerPanel } from "@/components/AuthorOwnerPanel";
-import { AuthorPapers } from "@/components/AuthorPapers";
+import { AuthorPapers, ClaimNotice } from "@/components/AuthorPapers";
 import { ScoreCard } from "@/components/ScoreCard";
 import { ShareMenu } from "@/components/ShareMenu";
 import { YearBars } from "@/components/YearBars";
-import { api, ApiError, authorHref, decodeParam, readerHref } from "@/lib/api";
+import { api, cached, ApiError, authorHref, decodeParam, readerHref } from "@/lib/api";
 import type { AuthorProfile } from "@/lib/types";
 
+
+// Built on first visit, then served from Vercel's cache and rebuilt at most every 6 h (ISR).
+export const revalidate = 21600;
+export async function generateStaticParams() {
+  return [];
+}
 const getAuthor = cache(async (id: string) => {
   try {
-    return await api<AuthorProfile>(`/authors/${encodeURIComponent(id)}`);
+    return await api<AuthorProfile>(`/authors/${encodeURIComponent(id)}`, cached(revalidate));
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
     throw e;
@@ -30,16 +36,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: a.name, description, alternates: { canonical: authorHref(a.id) }, openGraph: { title: a.name, description, type: "profile", url: authorHref(a.id) } };
 }
 
-export default async function AuthorPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ claimed?: string; claimError?: string }>;
-}) {
+export default async function AuthorPage({ params }: { params: Promise<{ id: string }> }) {
   const a = await getAuthor(decodeParam((await params).id));
   if (!a) notFound();
-  const { claimed, claimError } = await searchParams;
   const here = authorHref(a.id);
   const read = (url: string, title: string) => readerHref(url, { title, back: here });
 
@@ -84,12 +83,10 @@ export default async function AuthorPage({
               </Link>
             )}
           </div>
-          {claimed && <p className="mt-3 text-sm text-primary">✓ Profile verified. You can now add your patents and graduated students.</p>}
-          {claimError && (
-            <p role="alert" className="mt-3 text-sm text-accent">
-              {claimError}
-            </p>
-          )}
+          {/* Read in the browser so this page can be served from the cache. */}
+          <Suspense>
+            <ClaimNotice />
+          </Suspense>
         </div>
         {a.source === "openalex" ? (
           <AuthorMetricsPanel

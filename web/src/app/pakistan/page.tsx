@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionTitle } from "@/components/brand";
 import { YearBars } from "@/components/YearBars";
-import { api, venueHref } from "@/lib/api";
+import { api, cached, venueHref } from "@/lib/api";
 import type { CountryOverview } from "@/lib/types";
 
-// Live data from the SciRah API: render on each request (the API caches the numbers).
-export const dynamic = "force-dynamic";
+// Built from live SciRah data, then served from Vercel's cache and rebuilt at most once an hour (ISR).
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Pakistan",
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 const nf = new Intl.NumberFormat("en");
 
 export default async function PakistanPage() {
-  const data = await api<CountryOverview>("/explore/country?code=pk").catch(() => null);
+  const data = await api<CountryOverview>("/explore/country?code=pk", cached(revalidate)).catch(() => null);
   const year = new Date().getFullYear();
   const lastFull = data?.worksByYear.find((y) => y.year === year - 1);
   const prev = data?.worksByYear.find((y) => y.year === year - 2);

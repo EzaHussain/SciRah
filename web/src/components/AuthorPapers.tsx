@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, paperHref } from "@/lib/api";
 import type { AuthorClaim, Paper } from "@/lib/types";
@@ -34,10 +34,21 @@ export function AuthorPapers({ authorId, papers }: { authorId: string; papers: P
 
   const load = useCallback(async () => {
     const token = await getToken();
-    const claim = await api<AuthorClaim>(`${base}/claim`, { token }).catch(() => null);
+    const claim = token ? await api<AuthorClaim>(`${base}/claim`, { token }).catch(() => null) : null;
     setMine(!!claim?.mine);
-    if (claim?.mine) setHidden(await api<HiddenWork[]>(`${base}/hidden`).catch(() => []));
   }, [base, getToken]);
+
+  // Papers the researcher removed: loaded for every visitor, because this page may be a cached copy
+  // made before the removal.
+  useEffect(() => {
+    let cancelled = false;
+    api<HiddenWork[]>(`${base}/hidden`)
+      .then((list) => !cancelled && setHidden(list))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [base]);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -82,7 +93,8 @@ export function AuthorPapers({ authorId, papers }: { authorId: string; papers: P
     setBusy(null);
   };
 
-  const shown = papers.filter((p) => !p.ids.openalex || !removed.has(p.ids.openalex));
+  const hiddenIds = new Set(hidden.map((h) => h.workId));
+  const shown = papers.filter((p) => !p.ids.openalex || (!removed.has(p.ids.openalex) && !hiddenIds.has(p.ids.openalex)));
 
   return (
     <div>
@@ -130,4 +142,19 @@ export function AuthorPapers({ authorId, papers }: { authorId: string; papers: P
       )}
     </div>
   );
+}
+
+/** Result of an ORCID verification redirect (?claimed=1 or ?claimError=…), read in the browser. */
+export function ClaimNotice() {
+  const params = useSearchParams();
+  const claimed = params.get("claimed");
+  const claimError = params.get("claimError");
+  if (claimed) return <p className="mt-3 text-sm text-primary">✓ Profile verified. You can now add your patents and graduated students.</p>;
+  if (claimError)
+    return (
+      <p role="alert" className="mt-3 text-sm text-accent">
+        {claimError}
+      </p>
+    );
+  return null;
 }

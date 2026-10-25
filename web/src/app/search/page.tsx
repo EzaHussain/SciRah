@@ -17,7 +17,8 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
   const q = one((await searchParams).q);
-  return { title: q ? `“${q}”` : "Search" };
+  // Search results are endless and heavy: keep them out of search engines (robots.txt blocks them too).
+  return { title: q ? `“${q}”` : "Search", robots: { index: false, follow: false } };
 }
 
 const COUNTRY_ALIASES: Record<string, string> = {

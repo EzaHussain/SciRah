@@ -1,27 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { BANDS, bandFor, compact } from "@/lib/bins";
-
-interface Shape {
-  code: string;
-  name: string;
-  d: string;
-}
+// Pre-projected country outlines (scripts/build-world-shapes.mjs): a static file browsers cache once,
+// instead of ~150 KB of map drawing inside every search page.
+import shapes from "@/lib/world-shapes.json";
 
 /**
  * Choropleth of where a topic's research comes from: countries shaded by number of papers in
  * bands (1–99 … 100k+). Hover for the exact count; click to narrow the search to that country.
  */
 export function WorldMap({
-  shapes,
   counts,
   width,
   height,
   searchBase,
 }: {
-  shapes: Shape[];
   counts: Record<string, number>;
   width: number;
   height: number;
@@ -32,6 +27,13 @@ export function WorldMap({
   const [hover, setHover] = useState<{ code: string; x: number; y: number } | null>(null);
   const [table, setTable] = useState(false);
   const fmt = new Intl.NumberFormat("en");
+  // Draw the countries in the browser only: on the server they'd add ~110 KB of map paths to every
+  // search page's HTML. The empty SVG keeps its size, so nothing jumps when the map appears.
+  const inBrowser = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   const nameOf = new Map(shapes.map((s) => [s.code, s.name]));
   const open = (code: string) => router.push(`/search?${searchBase}&country=${code}`);
@@ -68,7 +70,7 @@ export function WorldMap({
       ) : (
         <div className="relative" onMouseLeave={() => setHover(null)}>
           <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label="World map of papers by country. Use Show table for the numbers.">
-            {shapes.map((s) => {
+            {(inBrowser ? shapes : []).map((s) => {
               const band = bandFor(counts[s.code]);
               const active = hover?.code === s.code;
               return (

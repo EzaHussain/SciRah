@@ -12,7 +12,6 @@ interface Entry {
 
 const STATIC: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
   { path: "/", priority: 1, changeFrequency: "daily" },
-  { path: "/search", priority: 0.6, changeFrequency: "daily" },
   { path: "/authors", priority: 0.8, changeFrequency: "weekly" },
   { path: "/pakistan", priority: 0.8, changeFrequency: "weekly" },
   { path: "/news", priority: 0.7, changeFrequency: "daily" },

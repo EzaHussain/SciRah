@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionTitle } from "@/components/brand";
 import { VenueFinder } from "@/components/VenueFinder";
-import { api, venueHref } from "@/lib/api";
+import { api, cached, venueHref } from "@/lib/api";
 import type { CountryOverview } from "@/lib/types";
 
-// Live data from the SciRah API: render on each request (the API caches the numbers).
-export const dynamic = "force-dynamic";
+// Built from live SciRah data, then served from Vercel's cache and rebuilt at most once an hour (ISR).
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Journals",
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function JournalsPage() {
-  const pk = await api<CountryOverview>("/explore/country?code=pk").catch(() => null);
+  const pk = await api<CountryOverview>("/explore/country?code=pk", cached(revalidate)).catch(() => null);
   const nf = new Intl.NumberFormat("en");
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">

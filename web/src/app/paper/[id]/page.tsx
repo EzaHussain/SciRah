@@ -13,12 +13,18 @@ import { QuoteIcon, UnlockIcon } from "@/components/icons";
 import { formatCount } from "@/components/PaperCard";
 import { ShareMenu } from "@/components/ShareMenu";
 import { SummaryPanel } from "@/components/SummaryPanel";
-import { api, ApiError, decodeParam, paperHref, readerHref, venueHref } from "@/lib/api";
+import { api, cached, ApiError, decodeParam, paperHref, readerHref, venueHref } from "@/lib/api";
 import { SOURCE_LABEL, type Paper } from "@/lib/types";
 
+
+// Built on first visit, then served from Vercel's cache and rebuilt at most every 24 h (ISR).
+export const revalidate = 86400;
+export async function generateStaticParams() {
+  return [];
+}
 const getPaper = cache(async (id: string) => {
   try {
-    return await api<Paper>(`/papers/detail?id=${encodeURIComponent(id)}`);
+    return await api<Paper>(`/papers/detail?id=${encodeURIComponent(id)}`, cached(revalidate));
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
     throw e;

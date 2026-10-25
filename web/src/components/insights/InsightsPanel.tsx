@@ -2,7 +2,7 @@ import Link from "next/link";
 import { YearBars } from "@/components/YearBars";
 import { api, authorHref } from "@/lib/api";
 import { compact } from "@/lib/bins";
-import { countryGeometry, WORLD_VIEWBOX, worldShapes } from "@/lib/geo";
+import { countryGeometry, WORLD_VIEWBOX } from "@/lib/geo";
 import type { Insights } from "@/lib/types";
 import { CountryMap, type MapPin } from "./CountryMap";
 import { WorldMap } from "./WorldMap";
@@ -50,7 +50,6 @@ export async function InsightsPanel({ params, query }: { params: URLSearchParams
   } else {
     map = (
       <WorldMap
-        shapes={worldShapes()}
         counts={Object.fromEntries(data.countries.map((c) => [c.code, c.count]))}
         width={WORLD_VIEWBOX.width}
         height={WORLD_VIEWBOX.height}

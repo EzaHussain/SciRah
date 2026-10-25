@@ -4,11 +4,11 @@ import { Suspense } from "react";
 import { SectionTitle } from "@/components/brand";
 import { formatCount } from "@/components/PaperCard";
 import { SearchBar } from "@/components/SearchBar";
-import { api, authorHref } from "@/lib/api";
+import { api, cached, authorHref } from "@/lib/api";
 import type { TopAuthor } from "@/lib/types";
 
-// Live data from the SciRah API: render on each request (the API caches the numbers).
-export const dynamic = "force-dynamic";
+// Built from live SciRah data, then served from Vercel's cache and rebuilt at most once an hour (ISR).
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Authors",
@@ -44,7 +44,7 @@ export default function AuthorsPage() {
 }
 
 async function TopResearchers() {
-  const list = await api<TopAuthor[]>("/explore/researchers?country=pk").catch(() => null);
+  const list = await api<TopAuthor[]>("/explore/researchers?country=pk", cached(revalidate)).catch(() => null);
   if (!list?.length) return <p className="card p-6 text-sm text-muted">This list is unavailable right now. Please try again later.</p>;
   return (
     <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

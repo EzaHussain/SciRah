@@ -5,6 +5,11 @@ import { API_URL } from "./api";
 /** httpOnly cookie holding the SciRah API session token (set only by our route handlers). */
 export const SESSION_COOKIE = "scirah_session";
 export const OAUTH_COOKIE = "scirah_oauth";
+/**
+ * Readable by the browser (unlike the session cookie) and holds no secret: it only says "someone signed
+ * in here", so signed-out visitors and crawlers don't make a session request to the server on every page.
+ */
+export const SIGNED_IN_COOKIE = "scirah_signed_in";
 const SESSION_DAYS = 30;
 
 export async function getServerToken(): Promise<string | null> {
@@ -22,10 +27,12 @@ export function setSessionCookie(res: NextResponse, req: NextRequest, token: str
     path: "/",
     maxAge: SESSION_DAYS * 86_400,
   });
+  res.cookies.set(SIGNED_IN_COOKIE, "1", { sameSite: "lax", secure: isHttps(req), path: "/", maxAge: SESSION_DAYS * 86_400 });
 }
 
 export function clearSessionCookie(res: NextResponse) {
   res.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+  res.cookies.set(SIGNED_IN_COOKIE, "", { path: "/", maxAge: 0 });
 }
 
 export function oauthCookieOptions(req: NextRequest) {

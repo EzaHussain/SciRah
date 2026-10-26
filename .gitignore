@@ -26,3 +26,8 @@ Thumbs.db
 
 # Local copy of deployment settings (contains secrets)
 railway-variables.txt
+
+# Local assistant notes (kept on this computer only)
+CLAUDE.md
+AGENTS.md
+.claude/

@@ -6,18 +6,12 @@ import { RoadDivider, SectionTitle } from "@/components/brand";
 import { Avatar } from "@/components/Header";
 import { PaperCard } from "@/components/PaperCard";
 import { ShareMenu } from "@/components/ShareMenu";
-import { api, cached, ApiError, authorHref, readerHref } from "@/lib/api";
+import { api, ApiError, authorHref, readerHref } from "@/lib/api";
 import type { PublicResearcher } from "@/lib/types";
 
-
-// Built on first visit, then served from Vercel's cache and rebuilt at most every 1 h (ISR).
-export const revalidate = 3600;
-export async function generateStaticParams() {
-  return [];
-}
 const getResearcher = cache(async (id: string) => {
   try {
-    return await api<PublicResearcher>(`/researchers/${encodeURIComponent(id)}`, cached(revalidate));
+    return await api<PublicResearcher>(`/researchers/${encodeURIComponent(id)}`);
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
     throw e;

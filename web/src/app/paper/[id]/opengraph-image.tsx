@@ -1,20 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { api, cached, decodeParam } from "@/lib/api";
+import { api, decodeParam } from "@/lib/api";
 import type { Paper } from "@/lib/types";
 
 export const alt = "Research paper on SciRah";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// Each preview card is drawn once and kept for a week.
-export const revalidate = 604800;
 
 /** The preview card shown when a paper link is shared on WhatsApp, LinkedIn, Facebook, WeChat… */
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeParam((await params).id);
   const [paper, logo] = await Promise.all([
-    api<Paper>(`/papers/detail?id=${encodeURIComponent(id)}`, cached(604800)).catch(() => null),
+    api<Paper>(`/papers/detail?id=${encodeURIComponent(id)}`).catch(() => null),
     readFile(join(process.cwd(), "public/logo-transparent.png")).then((b) => `data:image/png;base64,${b.toString("base64")}`),
   ]);
   const title = paper?.title ?? "Research paper";

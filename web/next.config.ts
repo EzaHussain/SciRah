@@ -27,9 +27,27 @@ function siteRedirects() {
     }));
 }
 
+/**
+ * Cache public, per-URL pages in Vercel's CDN for a while (Vercel-CDN-Cache-Control: honoured by
+ * Vercel's edge, ignored by browsers). Unlike ISR this writes nothing to Vercel's ISR store — ISR on
+ * millions of crawled paper/author URLs blew the Hobby "ISR Writes" limit (Oct 2026). These pages don't
+ * read cookies, so every visitor gets the same HTML; personal parts load in the browser.
+ */
+const cdn = (seconds: number) => [{ key: "Vercel-CDN-Cache-Control", value: `max-age=${seconds}, stale-while-revalidate=${seconds * 7}` }];
+
 const nextConfig: NextConfig = {
   async redirects() {
     return siteRedirects();
+  },
+  async headers() {
+    return [
+      { source: "/paper/:id", headers: cdn(86400) },
+      { source: "/paper/:id/full", headers: cdn(86400) },
+      { source: "/paper/:id/opengraph-image", headers: cdn(7 * 86400) },
+      { source: "/author/:id", headers: cdn(6 * 3600) },
+      { source: "/venue/:id", headers: cdn(86400) },
+      { source: "/researcher/:id", headers: cdn(3600) },
+    ];
   },
 };
 

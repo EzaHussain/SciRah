@@ -3,16 +3,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArticleBody } from "@/components/ArticleBody";
 import { UnlockIcon } from "@/components/icons";
-import { api, cached, ApiError, decodeParam, paperHref, pdfProxyUrl, readerHref } from "@/lib/api";
+import { api, ApiError, decodeParam, paperHref, pdfProxyUrl, readerHref } from "@/lib/api";
 import type { FullArticle, FullText, Paper } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Full paper", robots: { index: false } };
-
-// Served from Vercel's cache, rebuilt at most once a day (ISR).
-export const revalidate = 86400;
-export async function generateStaticParams() {
-  return [];
-}
 
 const slug = (s: string, i: number) => `s${i}-${s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40)}`;
 
@@ -21,12 +15,12 @@ export default async function FullPaperPage({ params }: { params: Promise<{ id: 
   const id = decodeParam((await params).id);
   let paper: Paper;
   try {
-    paper = await api<Paper>(`/papers/detail?id=${encodeURIComponent(id)}`, cached(revalidate));
+    paper = await api<Paper>(`/papers/detail?id=${encodeURIComponent(id)}`);
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 400)) notFound();
     throw e;
   }
-  const ft = await api<FullText>(`/papers/fulltext?id=${encodeURIComponent(paper.id)}`, cached(revalidate)).catch(
+  const ft = await api<FullText>(`/papers/fulltext?id=${encodeURIComponent(paper.id)}`).catch(
     (): FullText => ({ kind: "none", reason: "Couldn’t load the full text right now. Please try again." }),
   );
   const back = paperHref(paper.id);
@@ -60,7 +54,7 @@ export default async function FullPaperPage({ params }: { params: Promise<{ id: 
       </div>
     );
 
-  const article = await api<FullArticle>(`/papers/fulltext/article?pmcid=${encodeURIComponent(ft.pmcid)}`, cached(revalidate)).catch(() => null);
+  const article = await api<FullArticle>(`/papers/fulltext/article?pmcid=${encodeURIComponent(ft.pmcid)}`).catch(() => null);
   if (!article) redirect(back);
   const sections = article.sections.filter((s) => s.html.trim());
 

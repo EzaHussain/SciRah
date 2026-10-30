@@ -6,19 +6,13 @@ import { RoadDivider, SectionTitle } from "@/components/brand";
 import { formatCount, PaperCard } from "@/components/PaperCard";
 import { ShareMenu } from "@/components/ShareMenu";
 import { YearBars } from "@/components/YearBars";
-import { api, cached, ApiError, decodeParam, readerHref, venueHref } from "@/lib/api";
+import { api, ApiError, decodeParam, readerHref, venueHref } from "@/lib/api";
 import { COUNTRY_NAME } from "@/lib/filters";
 import type { VenueProfile } from "@/lib/types";
 
-
-// Built on first visit, then served from Vercel's cache and rebuilt at most every 24 h (ISR).
-export const revalidate = 86400;
-export async function generateStaticParams() {
-  return [];
-}
 const getVenue = cache(async (id: string) => {
   try {
-    return await api<VenueProfile>(`/venues/${encodeURIComponent(id)}`, cached(revalidate));
+    return await api<VenueProfile>(`/venues/${encodeURIComponent(id)}`);
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
     throw e;

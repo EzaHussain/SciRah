@@ -10,18 +10,12 @@ import { AuthorPapers, ClaimNotice } from "@/components/AuthorPapers";
 import { ScoreCard } from "@/components/ScoreCard";
 import { ShareMenu } from "@/components/ShareMenu";
 import { YearBars } from "@/components/YearBars";
-import { api, cached, ApiError, authorHref, decodeParam, readerHref } from "@/lib/api";
+import { api, ApiError, authorHref, decodeParam, readerHref } from "@/lib/api";
 import type { AuthorProfile } from "@/lib/types";
 
-
-// Built on first visit, then served from Vercel's cache and rebuilt at most every 6 h (ISR).
-export const revalidate = 21600;
-export async function generateStaticParams() {
-  return [];
-}
 const getAuthor = cache(async (id: string) => {
   try {
-    return await api<AuthorProfile>(`/authors/${encodeURIComponent(id)}`, cached(revalidate));
+    return await api<AuthorProfile>(`/authors/${encodeURIComponent(id)}`);
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
     throw e;

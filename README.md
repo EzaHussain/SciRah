@@ -102,3 +102,5 @@ Set `ADMIN_EMAILS` in `api/.env` (comma-separated). Those accounts see **Review 
 - All secrets are environment variables and live only on the API server. The browser never sees `AUTH_SECRET`, `GOOGLE_CLIENT_SECRET` or the OpenAI key.
 - Every user-owned query filters by the verified user id. Sign-in, sign-up and comments are rate-limited.
 - Bookmark metadata is looked up by the server, never taken from the client.
+#   S c i R a h  
+ 
